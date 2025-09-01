@@ -11,6 +11,8 @@ export default defineManifest({
   permissions: [
     'sidePanel',
     'contentSettings',
+    'storage',
+    'activeTab',
   ],
   action: {
     default_icon: {
@@ -18,10 +20,17 @@ export default defineManifest({
     },
     default_popup: 'src/popup/index.html',
   },
-  content_scripts: [{
-    js: ['src/content/main.jsx'],
-    matches: ['https://*/*'],
-  }],
+  content_scripts: [
+    {
+      js: ['src/content/main.jsx'],
+      matches: ['https://*/*'],
+    },
+    {
+      js: ['src/content/textMonitor.js'],
+        matches: ['<all_urls>'],
+        run_at: 'document_end'
+    }
+],
   side_panel: {
     default_path: 'src/sidepanel/index.html',
   },
