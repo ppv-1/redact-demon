@@ -4,8 +4,10 @@ class ModelService {
   constructor() {
     this.classifier = null
     this.isInitialized = false
-    this.task = 'sentiment-analysis'
-    this.modelName = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+    this.task = 'token-classification'
+    // this.modelName = 'Xenova/distilbert-base-uncased-finetuned-conll03-english'
+    // this.modelName = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
+    this.modelName = 'Xenova/distilbert-base-multilingual-cased-ner-hrl'
     this.configureEnvironment()
   }
 
@@ -38,7 +40,7 @@ class ModelService {
       console.log('Model loaded successfully:', pipe)
       
       // Test the model
-      const testResult = await pipe('Hello, world!')
+      const testResult = await pipe('My name is Sarah and I live in London')
       console.log('Test result:', testResult)
       
       this.classifier = pipe
@@ -74,7 +76,7 @@ class ModelService {
         throw new Error('No result returned from model')
       }
 
-      return result[0]
+      return result
     } catch (error) {
       console.error('Error processing text:', error)
       throw new Error(`Failed to analyze text: ${error.message}`)
