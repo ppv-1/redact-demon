@@ -2,6 +2,7 @@ from faker import Faker
 from faker.providers import BaseProvider
 from pypinyin import lazy_pinyin
 import random
+import pandas as pd
 
 # Set up Faker for English + Chinese
 fake_en = Faker("en_US")
@@ -138,6 +139,10 @@ def sg_name():
     else:
         return sg_english_name()
 
-# ---------- Demo ----------
-for _ in range(15):
-    print(sg_name())
+names = [sg_name() for _ in range(200)]  
+
+# Save to CSV
+df = pd.DataFrame(names, columns=["name"])
+df.to_csv("sg_names.csv", index=False, encoding="utf-8")
+
+print("Saved sg_names.csv with", len(names), "names")
