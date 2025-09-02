@@ -13,6 +13,7 @@ export default defineManifest({
     'contentSettings',
     'storage',
     'activeTab',
+    'contextMenus',
   ],
   action: {
     default_icon: {
@@ -27,10 +28,13 @@ export default defineManifest({
     },
     {
       js: ['src/content/textMonitor.js'],
-        matches: ['<all_urls>'],
-        run_at: 'document_end'
+      matches: ['<all_urls>'],
+      run_at: 'document_end'
     }
-],
+  ],
+  background: {
+    "service_worker": "src/background/background.js"
+  },
   side_panel: {
     default_path: 'src/sidepanel/index.html',
   },
