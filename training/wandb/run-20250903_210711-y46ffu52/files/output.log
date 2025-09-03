@@ -1,0 +1,34 @@
+{'eval_loss': 6.794568889745278e-06, 'eval_precision': 1.0, 'eval_recall': 1.0, 'eval_f1': 1.0, 'eval_accuracy': 1.0, 'eval_runtime': 24.8886, 'eval_samples_per_second': 401.71, 'eval_steps_per_second': 25.112, 'epoch': 3.0}
+Device set to use cuda:0
+[{'entity_group': 'PER', 'score': np.float32(0.9999329), 'word': 'dr', 'start': 0, 'end': 2}, {'entity_group': 'PER', 'score': np.float32(0.99998194), 'word': '. john doe', 'start': 2, 'end': 12}]
+Sentence: Dr. Tan Wei Ming treated the patient at Changi General Hospital.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.9998117), 'word': 'dr', 'start': 0, 'end': 2}, {'entity_group': 'PER', 'score': np.float32(0.9999846), 'word': '. tan wei ming', 'start': 2, 'end': 16}]
+--------------------------------------------------
+Sentence: Yesterday, Mr. Lim Mei Ling attended the meeting with Ms. Ng Zi Xin.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.999974), 'word': 'mr', 'start': 11, 'end': 13}, {'entity_group': 'PER', 'score': np.float32(0.9999841), 'word': '. lim mei ling', 'start': 13, 'end': 27}]
+--------------------------------------------------
+Sentence: I met Suresh Kumar at Marina Bay Sands yesterday evening.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.9999764), 'word': 'sure', 'start': 6, 'end': 10}, {'entity_group': 'PER', 'score': np.float32(0.9999805), 'word': '##sh kumar', 'start': 10, 'end': 18}, {'entity_group': 'PER', 'score': np.float32(0.5040366), 'word': 'marina bay sands', 'start': 22, 'end': 38}]
+--------------------------------------------------
+Sentence: Jessica Lee and Ahmad Faizal are joining the workshop next week.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.94960403), 'word': 'jessica lee and', 'start': 0, 'end': 15}, {'entity_group': 'PER', 'score': np.float32(0.9997573), 'word': 'ahmad faizal', 'start': 16, 'end': 28}]
+--------------------------------------------------
+Sentence: The CEO, Chan Li Wei, announced the new policy at the headquarters.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.979301), 'word': ',', 'start': 7, 'end': 8}, {'entity_group': 'PER', 'score': np.float32(0.9999671), 'word': 'chan li wei', 'start': 9, 'end': 20}]
+--------------------------------------------------
+Sentence: Nur Aisyah and Tan Jun Hao volunteered at the community center.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.99997395), 'word': 'nur aisyah and tan jun hao', 'start': 0, 'end': 26}]
+--------------------------------------------------
+Sentence: Dr. Ong Si Jie conducted a seminar on health economics in Singapore.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.9999671), 'word': 'dr', 'start': 0, 'end': 2}, {'entity_group': 'PER', 'score': np.float32(0.9999828), 'word': '. ong si jie', 'start': 2, 'end': 14}]
+--------------------------------------------------
+Sentence: We saw Jonathan Ng and Priya Ramasamy at the MRT station.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.9999442), 'word': 'jonathan ng and', 'start': 7, 'end': 22}, {'entity_group': 'PER', 'score': np.float32(0.92969465), 'word': 'priya ramasamy', 'start': 23, 'end': 37}]
+--------------------------------------------------
+Sentence: Halimah Yacob visited the local school to encourage reading among children.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.999964), 'word': 'hal', 'start': 0, 'end': 3}, {'entity_group': 'PER', 'score': np.float32(0.9999722), 'word': '##ima', 'start': 3, 'end': 6}, {'entity_group': 'PER', 'score': np.float32(0.99998033), 'word': '##h yacob', 'start': 6, 'end': 13}]
+--------------------------------------------------
+You seem to be using the pipelines sequentially on GPU. In order to maximize efficiency please use a dataset
+Sentence: Lee Hsien Loong gave a speech at the National Day Parade.
+Predictions: [{'entity_group': 'PER', 'score': np.float32(0.9999797), 'word': 'lee hsien loong', 'start': 0, 'end': 15}]
+--------------------------------------------------
