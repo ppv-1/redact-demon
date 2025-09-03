@@ -1,8 +1,8 @@
 chrome.runtime.onInstalled.addListener(() => {
   // Create context menu item
   chrome.contextMenus.create({
-    id: "redact-names",
-    title: "Redact Names",
+    id: "redact-entities",
+    title: "Redact Entities",
     contexts: ["editable"], // Only show on text inputs
     enabled: false // Initially disabled
   })
@@ -12,10 +12,10 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "redact-names") {
-    // Send message to content script to redact names
+  if (info.menuItemId === "redact-entities") {
+    // Send message to content script to redact all entities
     chrome.tabs.sendMessage(tab.id, {
-      action: 'REDACT_PERSONS_FROM_CONTEXT'
+      action: 'REDACT_ENTITIES_FROM_CONTEXT'
     })
   }
 })
@@ -27,10 +27,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     
     // Update context menu title and enabled state
     const title = hasPersonEntities 
-      ? `Redact Names (${personCount} found)`
-      : "Redact Names"
+      ? `Redact Entities (${personCount} found)`
+      : "Redact Entities"
     
-    chrome.contextMenus.update("redact-names", {
+    chrome.contextMenus.update("redact-entities", {
       title: title,
       enabled: hasPersonEntities
     })

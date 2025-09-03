@@ -51,12 +51,12 @@ export default class TextMonitor {
                     this.replaceCurrentText(request.newText)
                     sendResponse({ success: true })
                     break
-                case 'REDACT_PERSONS':
-                    this.redactPersonEntities()
+                case 'REDACT_ENTITIES':
+                    this.redactAllEntities()
                     sendResponse({ success: true })
                     break
-                case 'REDACT_PERSONS_FROM_CONTEXT':
-                    this.redactPersonEntities()
+                case 'REDACT_ENTITIES_FROM_CONTEXT':
+                    this.redactAllEntities()
                     sendResponse({ success: true })
                     break
                 case 'GET_LAST_ANALYSIS':
@@ -201,16 +201,16 @@ export default class TextMonitor {
             return
         }
 
-        const personEntities = this.getPersonEntities(this.lastAnalysisResult)
-        this.updateContextMenu(personEntities.length > 0, personEntities.length)
+        const namedEntities = this.getNamedEntities(this.lastAnalysisResult)
+        this.updateContextMenu(namedEntities.length > 0, namedEntities.length)
     }
 
-    updateContextMenu(hasPersonEntities, personCount) {
+    updateContextMenu(hasEntities, entityCount) {
         // Send message to background script to update context menu
         chrome.runtime.sendMessage({
             action: 'UPDATE_CONTEXT_MENU',
-            hasPersonEntities: hasPersonEntities,
-            personCount: personCount
+            hasPersonEntities: hasEntities,
+            personCount: entityCount
         }).catch(error => {
             console.log('Failed to update context menu:', error)
         })
@@ -259,50 +259,65 @@ export default class TextMonitor {
         }
     }
 
-    getPersonEntities(analysisResult) {
+    getNamedEntities(analysisResult) {
         if (!analysisResult || !Array.isArray(analysisResult)) return []
         
+        // Filter out 'O' (outside) and 'MISC' entities
         return analysisResult.filter(entity => 
-            entity.entity === 'B-PER' || entity.entity === 'I-PER'
+            entity.entity && 
+            entity.entity !== 'O' && 
+            !entity.entity.includes('MISC')
         )
     }
 
-    redactPersonEntities() {
+    getEntityType(entityLabel) {
+        // Extract entity type from B-XXX or I-XXX format
+        if (entityLabel.startsWith('B-') || entityLabel.startsWith('I-')) {
+            return entityLabel.substring(2) // Remove 'B-' or 'I-' prefix
+        }
+        return entityLabel
+    }
+
+    redactAllEntities() {
         if (!this.lastAnalysisResult || !this.currentInput) {
             console.log('No analysis result or current input to redact')
             return
         }
 
         const currentText = this.getCurrentText()
-        const personEntities = this.getPersonEntities(this.lastAnalysisResult)
+        const namedEntities = this.getNamedEntities(this.lastAnalysisResult)
         
-        if (personEntities.length === 0) {
-            console.log('No person entities to redact')
+        if (namedEntities.length === 0) {
+            console.log('No named entities to redact')
             return
         }
 
-        // Group consecutive tokens that form complete names
-        const nameGroups = this.groupConsecutiveTokens(personEntities)
+        // Group entities by type
+        const entitiesByType = this.groupEntitiesByType(namedEntities)
         
-        // Convert token positions to character positions
-        const characterPositions = this.getCharacterPositions(currentText, nameGroups)
-        
-        // Sort by character position in descending order to avoid index shifting
-        const sortedPositions = characterPositions.sort((a, b) => b.start - a.start)
-        
+        // Process each entity type
         let redactedText = currentText
         
-        sortedPositions.forEach(position => {
-            const redaction = '[REDACTED]'
+        // Process all entity types (PER, ORG, LOC)
+        for (const [entityType, entities] of Object.entries(entitiesByType)) {
+            const nameGroups = this.groupConsecutiveTokens(entities)
+            const characterPositions = this.getCharacterPositions(redactedText, nameGroups, entityType)
             
-            // Replace the name with [REDACTED]
-            const beforeName = redactedText.substring(0, position.start)
-            const afterName = redactedText.substring(position.end)
-            redactedText = beforeName + redaction + afterName
-        })
+            // Sort by character position in descending order to avoid index shifting
+            const sortedPositions = characterPositions.sort((a, b) => b.start - a.start)
+            
+            sortedPositions.forEach(position => {
+                const redaction = `[REDACTED_${position.entityType}]`
+                
+                // Replace the entity with [REDACTED_TYPE]
+                const beforeEntity = redactedText.substring(0, position.start)
+                const afterEntity = redactedText.substring(position.end)
+                redactedText = beforeEntity + redaction + afterEntity
+            })
+        }
 
         this.replaceCurrentText(redactedText)
-        console.log('Text redacted successfully')
+        console.log('All entities redacted successfully')
         
         // Clear analysis result after redaction
         this.lastAnalysisResult = null
@@ -310,11 +325,25 @@ export default class TextMonitor {
         this.updateContextMenu(false, 0)
     }
 
-    groupConsecutiveTokens(personEntities) {
-        if (personEntities.length === 0) return []
+    groupEntitiesByType(entities) {
+        const grouped = {}
+        
+        entities.forEach(entity => {
+            const entityType = this.getEntityType(entity.entity)
+            if (!grouped[entityType]) {
+                grouped[entityType] = []
+            }
+            grouped[entityType].push(entity)
+        })
+        
+        return grouped
+    }
+
+    groupConsecutiveTokens(entities) {
+        if (entities.length === 0) return []
         
         // Sort by token index
-        const sorted = personEntities.sort((a, b) => a.index - b.index)
+        const sorted = entities.sort((a, b) => a.index - b.index)
         const groups = []
         let currentGroup = [sorted[0]]
         
@@ -322,9 +351,9 @@ export default class TextMonitor {
             const current = sorted[i]
             const previous = sorted[i - 1]
             
-            // If tokens are consecutive and form a complete name
+            // If tokens are consecutive and form a complete entity
             if (current.index === previous.index + 1 && 
-                (current.entity === 'I-PER' || previous.entity === 'B-PER')) {
+                (current.entity.startsWith('I-') || previous.entity.startsWith('B-'))) {
                 currentGroup.push(current)
             } else {
                 groups.push(currentGroup)
@@ -336,21 +365,22 @@ export default class TextMonitor {
         return groups
     }
 
-    getCharacterPositions(originalText, nameGroups) {
+    getCharacterPositions(originalText, nameGroups, entityType) {
         const positions = []
         
         for (const group of nameGroups) {
-            // Reconstruct the full name from tokens
-            const fullName = group.map(token => token.word).join('').replace(/^##/, '')
+            // Reconstruct the full entity from tokens
+            const fullEntity = group.map(token => token.word).join('').replace(/^##/, '')
             
             // Find the character position in the original text
-            const charPosition = this.findNameInText(originalText, fullName, group[0].word)
+            const charPosition = this.findEntityInText(originalText, fullEntity, group[0].word)
             
             if (charPosition !== -1) {
                 positions.push({
                     start: charPosition,
-                    end: charPosition + fullName.length,
-                    name: fullName,
+                    end: charPosition + fullEntity.length,
+                    name: fullEntity,
+                    entityType: entityType,
                     tokens: group
                 })
             }
@@ -359,16 +389,16 @@ export default class TextMonitor {
         return positions
     }
 
-    findNameInText(text, fullName, firstToken) {
+    findEntityInText(text, fullEntity, firstToken) {
         // Try exact match first
-        let position = text.indexOf(fullName)
+        let position = text.indexOf(fullEntity)
         if (position !== -1) return position
         
         // Try case-insensitive match
-        position = text.toLowerCase().indexOf(fullName.toLowerCase())
+        position = text.toLowerCase().indexOf(fullEntity.toLowerCase())
         if (position !== -1) return position
         
-        // Try finding by first token (for partially reconstructed names)
+        // Try finding by first token (for partially reconstructed entities)
         const cleanFirstToken = firstToken.replace(/^##/, '')
         const tokenPositions = []
         let searchPos = 0
@@ -405,7 +435,7 @@ export default class TextMonitor {
             return {
                 success: true,
                 result: result,
-                message: `${result.label}: ${(result.score * 100).toFixed(2)}% confidence`
+                message: `Analysis complete: ${result.length} entities found`
             }
         } catch (error) {
             return { success: false, message: error.message }
@@ -483,14 +513,12 @@ export default class TextMonitor {
 // Initialize the text monitor
 const textMonitor = new TextMonitor()
 
-
 // Auto-start monitoring after page load
 setTimeout(async () => {
     console.log('Auto-starting Redact Demon')
     try {
         await textMonitor.initializeModel()
         console.log("Model Loaded")
-
     } catch (error) {
         console.log("Model initialization failed")
     }
