@@ -1,85 +1,28 @@
 import { modelService } from '../services/ModelService.js'
+import { InputManager } from './inputManager.js'
+import { AnalysisManager } from './analysisManager.js'
+import { RedactionManager } from './redactionManager.js'
+import { MessageHandler } from './messageHandler.js'
+import { ContextMenuManager } from './contextMenuManager.js'
 
 export default class TextMonitor {
     constructor() {
         this.isMonitoring = false
-        this.currentInput = null
-        this.observers = []
         this.isAutoAnalyzing = true
-        this.debounceTimer = null
-        this.lastAnalysisResult = null
-        this.setupMessageListener()
+        
+        // Initialize managers
+        this.inputManager = new InputManager(this)
+        this.analysisManager = new AnalysisManager(this, modelService)
+        this.redactionManager = new RedactionManager(this)
+        this.messageHandler = new MessageHandler(this)
+        this.contextMenuManager = new ContextMenuManager()
+        
+        this.messageHandler.setupMessageListener()
         console.log('TextMonitor initialized with ModelService')
     }
 
-    setupMessageListener() {
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            console.log('Received message:', request)
-
-            switch (request.action) {
-                case 'START_MONITORING':
-                    this.startMonitoring()
-                    sendResponse({ success: true })
-                    break
-                case 'STOP_MONITORING':
-                    this.stopMonitoring()
-                    sendResponse({ success: true })
-                    break
-                case 'START_AUTO_ANALYSIS':
-                    this.startAutoAnalysis()
-                    sendResponse({ success: true })
-                    break
-                case 'STOP_AUTO_ANALYSIS':
-                    this.stopAutoAnalysis()
-                    sendResponse({ success: true })
-                    break
-                case 'INIT_MODEL':
-                    this.initializeModel().then(result => {
-                        sendResponse(result)
-                    })
-                    return true // Keep channel open for async response
-                case 'GET_CURRENT_TEXT':
-                    const text = this.getCurrentText()
-                    sendResponse({ text })
-                    break
-                case 'ANALYZE_CURRENT_TEXT':
-                    this.analyzeCurrentText().then(result => {
-                        sendResponse(result)
-                    })
-                    return true
-                case 'REPLACE_TEXT':
-                    this.replaceCurrentText(request.newText)
-                    sendResponse({ success: true })
-                    break
-                case 'REDACT_ENTITIES':
-                    this.redactAllEntities()
-                    sendResponse({ success: true })
-                    break
-                case 'REDACT_ENTITIES_FROM_CONTEXT':
-                    this.redactAllEntities()
-                    sendResponse({ success: true })
-                    break
-                case 'GET_LAST_ANALYSIS':
-                    sendResponse({ 
-                        success: true, 
-                        result: this.lastAnalysisResult,
-                        text: this.getCurrentText()
-                    })
-                    break
-            }
-        })
-    }
-
     async initializeModel() {
-        try {
-            console.log('Initializing model in content script...')
-            await modelService.initializeModel()
-            console.log('Model initialized successfully')
-            return { success: true, message: 'Model loaded in content script' }
-        } catch (error) {
-            console.error('Failed to initialize model:', error)
-            return { success: false, message: error.message }
-        }
+        return await this.analysisManager.initializeModel()
     }
 
     startAutoAnalysis() {
@@ -89,10 +32,7 @@ export default class TextMonitor {
 
     stopAutoAnalysis() {
         this.isAutoAnalyzing = false
-        if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer)
-            this.debounceTimer = null
-        }
+        this.analysisManager.clearDebounceTimer()
         console.log('Auto-analysis disabled')
     }
 
@@ -103,410 +43,44 @@ export default class TextMonitor {
         }
 
         this.isMonitoring = true
-        this.attachToExistingInputs()
-        this.watchForNewInputs()
+        this.inputManager.startMonitoring()
         console.log('Text monitoring started')
     }
 
     stopMonitoring() {
         this.isMonitoring = false
         this.stopAutoAnalysis()
-        this.observers.forEach(observer => observer.disconnect())
-        this.observers = []
-        this.currentInput = null
+        this.inputManager.stopMonitoring()
         console.log('Text monitoring stopped')
     }
 
-    attachToExistingInputs() {
-        const selectors = [
-            'input[type="text"]',
-            'input[type="email"]',
-            'input[type="search"]',
-            'textarea',
-            '[contenteditable="true"]',
-            '[role="textbox"]',
-            '.chat-input',
-            '.message-input',
-            '#message',
-            '[placeholder*="message"]',
-            '[placeholder*="chat"]',
-            '[placeholder*="type"]',
-            '[placeholder*="search"]',
-            '[placeholder*="comment"]'
-        ]
-
-        let inputCount = 0
-        selectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(element => {
-                this.attachToInput(element)
-                inputCount++
-            })
-        })
-
-        console.log(`Attached to ${inputCount} existing input elements`)
-    }
-
-    attachToInput(element) {
-        if (element.dataset.redactDemonAttached) return
-        element.dataset.redactDemonAttached = 'true'
-
-        console.log('Attaching to input:', element.tagName, element.className, element.placeholder)
-
-        element.addEventListener('focus', () => {
-            this.currentInput = element
-            console.log('Input focused:', {
-                tag: element.tagName,
-                placeholder: element.placeholder
-            })
-            
-            // Update context menu when input is focused
-            this.updateContextMenuForCurrentInput()
-        })
-
-        element.addEventListener('input', (e) => {
-            if (this.currentInput === element) {
-                const text = this.getElementText(element)
-                console.log('Text changed:', text)
-
-                // Auto-analyze if enabled
-                if (this.isAutoAnalyzing && text.trim().length > 3) {
-                    this.debounceAnalysis(text)
-                }
-            }
-        })
-
-        element.addEventListener('blur', () => {
-            if (this.currentInput === element) {
-                this.currentInput = null
-                // Disable context menu when no input is focused
-                this.updateContextMenu(false, 0)
-            }
-        })
-
-        // Listen for right-click to ensure context menu is up to date
-        element.addEventListener('contextmenu', () => {
-            this.updateContextMenuForCurrentInput()
-        })
-    }
-
-    updateContextMenuForCurrentInput() {
-        if (!this.currentInput) {
-            this.updateContextMenu(false, 0)
-            return
-        }
-
-        const text = this.getCurrentText()
-        if (!text.trim() || !this.lastAnalysisResult) {
-            this.updateContextMenu(false, 0)
-            return
-        }
-
-        const namedEntities = this.getNamedEntities(this.lastAnalysisResult)
-        this.updateContextMenu(namedEntities.length > 0, namedEntities.length)
-    }
-
-    updateContextMenu(hasEntities, entityCount) {
-        // Send message to background script to update context menu
-        chrome.runtime.sendMessage({
-            action: 'UPDATE_CONTEXT_MENU',
-            hasPersonEntities: hasEntities,
-            personCount: entityCount
-        }).catch(error => {
-            console.log('Failed to update context menu:', error)
-        })
-    }
-
-    debounceAnalysis(text) {
-        // Clear existing timer
-        if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer)
-        }
-
-        // Set new timer to analyze after 500ms of no typing
-        this.debounceTimer = setTimeout(() => {
-            this.performAnalysis(text)
-        }, 500)
-    }
-
-    async performAnalysis(text) {
-        if (!modelService.isModelLoaded()) {
-            console.log('Model not loaded, skipping analysis')
-            return
-        }
-
-        try {
-            console.log('Analyzing text:', text)
-            const result = await modelService.analyzeText(text)
-            console.log('Analysis result:', typeof result)
-
-            // Store the result for potential redaction
-            this.lastAnalysisResult = result
-
-            result.forEach((entity, index) => {
-                console.log(`Entity ${index + 1}:`, {
-                    word: entity.word,
-                    type: entity.entity,
-                    score: (entity.score * 100).toFixed(2) + '%',
-                    index: entity.index
-                })
-            })
-
-            // Update context menu based on analysis
-            this.updateContextMenuForCurrentInput()
-
-        } catch (error) {
-            console.error('Analysis failed:', error)
-        }
-    }
-
-    getNamedEntities(analysisResult) {
-        if (!analysisResult || !Array.isArray(analysisResult)) return []
-        
-        // Filter out 'O' (outside) and 'MISC' entities
-        return analysisResult.filter(entity => 
-            entity.entity && 
-            entity.entity !== 'O' && 
-            !entity.entity.includes('MISC')
-        )
-    }
-
-    getEntityType(entityLabel) {
-        // Extract entity type from B-XXX or I-XXX format
-        if (entityLabel.startsWith('B-') || entityLabel.startsWith('I-')) {
-            return entityLabel.substring(2) // Remove 'B-' or 'I-' prefix
-        }
-        return entityLabel
-    }
-
-    redactAllEntities() {
-        if (!this.lastAnalysisResult || !this.currentInput) {
-            console.log('No analysis result or current input to redact')
-            return
-        }
-
-        const currentText = this.getCurrentText()
-        const namedEntities = this.getNamedEntities(this.lastAnalysisResult)
-        
-        if (namedEntities.length === 0) {
-            console.log('No named entities to redact')
-            return
-        }
-
-        // Group entities by type
-        const entitiesByType = this.groupEntitiesByType(namedEntities)
-        
-        // Process each entity type
-        let redactedText = currentText
-        
-        // Process all entity types (PER, ORG, LOC)
-        for (const [entityType, entities] of Object.entries(entitiesByType)) {
-            const nameGroups = this.groupConsecutiveTokens(entities)
-            const characterPositions = this.getCharacterPositions(redactedText, nameGroups, entityType)
-            
-            // Sort by character position in descending order to avoid index shifting
-            const sortedPositions = characterPositions.sort((a, b) => b.start - a.start)
-            
-            sortedPositions.forEach(position => {
-                const redaction = `[REDACTED_${position.entityType}]`
-                
-                // Replace the entity with [REDACTED_TYPE]
-                const beforeEntity = redactedText.substring(0, position.start)
-                const afterEntity = redactedText.substring(position.end)
-                redactedText = beforeEntity + redaction + afterEntity
-            })
-        }
-
-        this.replaceCurrentText(redactedText)
-        console.log('All entities redacted successfully')
-        
-        // Clear analysis result after redaction
-        this.lastAnalysisResult = null
-        // Update context menu to disable it
-        this.updateContextMenu(false, 0)
-    }
-
-    groupEntitiesByType(entities) {
-        const grouped = {}
-        
-        entities.forEach(entity => {
-            const entityType = this.getEntityType(entity.entity)
-            if (!grouped[entityType]) {
-                grouped[entityType] = []
-            }
-            grouped[entityType].push(entity)
-        })
-        
-        return grouped
-    }
-
-    groupConsecutiveTokens(entities) {
-        if (entities.length === 0) return []
-        
-        // Sort by token index
-        const sorted = entities.sort((a, b) => a.index - b.index)
-        const groups = []
-        let currentGroup = [sorted[0]]
-        
-        for (let i = 1; i < sorted.length; i++) {
-            const current = sorted[i]
-            const previous = sorted[i - 1]
-            
-            // If tokens are consecutive and form a complete entity
-            if (current.index === previous.index + 1 && 
-                (current.entity.startsWith('I-') || previous.entity.startsWith('B-'))) {
-                currentGroup.push(current)
-            } else {
-                groups.push(currentGroup)
-                currentGroup = [current]
-            }
-        }
-        groups.push(currentGroup)
-        
-        return groups
-    }
-
-    getCharacterPositions(originalText, nameGroups, entityType) {
-        const positions = []
-        
-        for (const group of nameGroups) {
-            // Reconstruct the full entity from tokens
-            const fullEntity = group.map(token => token.word).join('').replace(/^##/, '')
-            
-            // Find the character position in the original text
-            const charPosition = this.findEntityInText(originalText, fullEntity, group[0].word)
-            
-            if (charPosition !== -1) {
-                positions.push({
-                    start: charPosition,
-                    end: charPosition + fullEntity.length,
-                    name: fullEntity,
-                    entityType: entityType,
-                    tokens: group
-                })
-            }
-        }
-        
-        return positions
-    }
-
-    findEntityInText(text, fullEntity, firstToken) {
-        // Try exact match first
-        let position = text.indexOf(fullEntity)
-        if (position !== -1) return position
-        
-        // Try case-insensitive match
-        position = text.toLowerCase().indexOf(fullEntity.toLowerCase())
-        if (position !== -1) return position
-        
-        // Try finding by first token (for partially reconstructed entities)
-        const cleanFirstToken = firstToken.replace(/^##/, '')
-        const tokenPositions = []
-        let searchPos = 0
-        
-        while (searchPos < text.length) {
-            const pos = text.toLowerCase().indexOf(cleanFirstToken.toLowerCase(), searchPos)
-            if (pos === -1) break
-            
-            // Check if this is a word boundary
-            const beforeChar = pos > 0 ? text[pos - 1] : ' '
-            const afterChar = pos + cleanFirstToken.length < text.length ? 
-                             text[pos + cleanFirstToken.length] : ' '
-            
-            if (/\s/.test(beforeChar) && (/\s/.test(afterChar) || /[.,!?;:]/.test(afterChar))) {
-                tokenPositions.push(pos)
-            }
-            
-            searchPos = pos + 1
-        }
-        
-        // Return the first valid word boundary match
-        return tokenPositions.length > 0 ? tokenPositions[0] : -1
-    }
-
-    async analyzeCurrentText() {
-        const text = this.getCurrentText()
-        if (!text.trim()) {
-            return { success: false, message: 'No text to analyze' }
-        }
-
-        try {
-            const result = await modelService.analyzeText(text)
-            console.log('Manual analysis result:', result)
-            return {
-                success: true,
-                result: result,
-                message: `Analysis complete: ${result.length} entities found`
-            }
-        } catch (error) {
-            return { success: false, message: error.message }
-        }
-    }
-
-    watchForNewInputs() {
-        const observer = new MutationObserver(mutations => {
-            let newInputs = 0
-
-            mutations.forEach(mutation => {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) {
-                        if (this.isInputElement(node)) {
-                            this.attachToInput(node)
-                            newInputs++
-                        }
-                        if (node.querySelectorAll) {
-                            node.querySelectorAll('input, textarea, [contenteditable="true"], [role="textbox"]').forEach(input => {
-                                this.attachToInput(input)
-                                newInputs++
-                            })
-                        }
-                    }
-                })
-            })
-
-            if (newInputs > 0) {
-                console.log(`Found ${newInputs} new input elements`)
-            }
-        })
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        })
-
-        this.observers.push(observer)
-    }
-
-    isInputElement(element) {
-        return element.tagName === 'INPUT' ||
-            element.tagName === 'TEXTAREA' ||
-            element.contentEditable === 'true' ||
-            element.getAttribute('role') === 'textbox'
-    }
-
     getCurrentText() {
-        if (!this.currentInput) return ''
-        return this.getElementText(this.currentInput)
-    }
-
-    getElementText(element) {
-        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-            return element.value
-        } else if (element.contentEditable === 'true') {
-            return element.textContent || element.innerText
-        }
-        return ''
+        return this.inputManager.getCurrentText()
     }
 
     replaceCurrentText(newText) {
-        if (!this.currentInput) return
+        this.inputManager.replaceCurrentText(newText)
+    }
 
-        if (this.currentInput.tagName === 'INPUT' || this.currentInput.tagName === 'TEXTAREA') {
-            this.currentInput.value = newText
-            this.currentInput.dispatchEvent(new Event('input', { bubbles: true }))
-        } else if (this.currentInput.contentEditable === 'true') {
-            this.currentInput.textContent = newText
-            this.currentInput.dispatchEvent(new Event('input', { bubbles: true }))
-        }
+    async analyzeCurrentText() {
+        return await this.analysisManager.analyzeCurrentText()
+    }
+
+    redactAllEntities() {
+        this.redactionManager.redactAllEntities()
+    }
+
+    getLastAnalysisResult() {
+        return this.analysisManager.getLastAnalysisResult()
+    }
+
+    // Getters for managers to access shared state
+    get currentInput() {
+        return this.inputManager.currentInput
+    }
+
+    get lastAnalysisResult() {
+        return this.analysisManager.lastAnalysisResult
     }
 }
 
