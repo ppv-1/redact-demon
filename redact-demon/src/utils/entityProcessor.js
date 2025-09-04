@@ -10,6 +10,12 @@ export class EntityProcessor {
     }
 
     getEntityType(entityLabel) {
+        // Handle regex entity types (they're already clean)
+        if (!entityLabel.includes('-')) {
+            return entityLabel
+        }
+        
+        // Handle ML model entity types (B- and I- prefixes)
         if (entityLabel.startsWith('B-') || entityLabel.startsWith('I-')) {
             return entityLabel.substring(2)
         }
@@ -33,7 +39,7 @@ export class EntityProcessor {
     groupConsecutiveTokens(entities) {
         if (entities.length === 0) return []
         
-        const sorted = entities.sort((a, b) => a.index - b.index)
+        const sorted = entities.sort((a, b) => (a.start || a.index) - (b.start || b.index))
         const groups = []
         let currentGroup = [sorted[0]]
         
@@ -41,10 +47,27 @@ export class EntityProcessor {
             const current = sorted[i]
             const previous = sorted[i - 1]
             
-            if (current.index === previous.index + 1 && 
-                (current.entity.startsWith('I-') || previous.entity.startsWith('B-'))) {
-                currentGroup.push(current)
-            } else {
+            // For regex entities, use character positions
+            if (current.source === 'regex' && previous.source === 'regex') {
+                if (current.start <= previous.end + 2) { // Allow small gaps
+                    currentGroup.push(current)
+                } else {
+                    groups.push(currentGroup)
+                    currentGroup = [current]
+                }
+            }
+            // For ML entities, use token indices
+            else if (current.source === 'ml' && previous.source === 'ml') {
+                if (current.index === previous.index + 1 && 
+                    (current.entity.startsWith('I-') || previous.entity.startsWith('B-'))) {
+                    currentGroup.push(current)
+                } else {
+                    groups.push(currentGroup)
+                    currentGroup = [current]
+                }
+            }
+            // Mixed sources - start new group
+            else {
                 groups.push(currentGroup)
                 currentGroup = [current]
             }
@@ -58,17 +81,34 @@ export class EntityProcessor {
         const positions = []
         
         for (const group of nameGroups) {
-            const fullEntity = group.map(token => token.word).join('').replace(/^##/, '')
-            const charPosition = this.findEntityInText(originalText, fullEntity, group[0].word)
-            
-            if (charPosition !== -1) {
+            // Handle regex entities (already have character positions)
+            if (group[0].source === 'regex') {
+                const entity = group[0] // Regex entities are typically single matches
                 positions.push({
-                    start: charPosition,
-                    end: charPosition + fullEntity.length,
-                    name: fullEntity,
+                    start: entity.start,
+                    end: entity.end,
+                    name: entity.word,
                     entityType: entityType,
-                    tokens: group
+                    tokens: group,
+                    source: 'regex',
+                    replacement: entity.replacement
                 })
+            }
+            // Handle ML entities (need to find character positions)
+            else {
+                const fullEntity = group.map(token => token.word).join('').replace(/^##/, '')
+                const charPosition = this.findEntityInText(originalText, fullEntity, group[0].word)
+                
+                if (charPosition !== -1) {
+                    positions.push({
+                        start: charPosition,
+                        end: charPosition + fullEntity.length,
+                        name: fullEntity,
+                        entityType: entityType,
+                        tokens: group,
+                        source: 'ml'
+                    })
+                }
             }
         }
         

@@ -9,8 +9,6 @@ export default class TextMonitor {
     constructor() {
         this.isMonitoring = false
         this.isAutoAnalyzing = true
-        
-        // Initialize managers
         this.inputManager = new InputManager(this)
         this.analysisManager = new AnalysisManager(this, modelService)
         this.redactionManager = new RedactionManager(this)
