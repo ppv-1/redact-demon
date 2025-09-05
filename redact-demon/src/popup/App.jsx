@@ -1,147 +1,172 @@
 import './App.css'
 import { useState, useEffect } from 'react'
-import { pipeline, env } from '@xenova/transformers'
+import { RegexPatternMatcher } from '../utils/regexPatternMatcher.js'
 
 export default function App() {
-    const [input, setInput] = useState('')
-    const [output, setOutput] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
-    const [classifier, setClassifier] = useState(null)
-    const task = 'sentiment-analysis';
-    const modelName = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english';
-    
-    useEffect(() => {
-        // Configure transformers.js for browser extension environment
-        env.useBrowserCache = false;
-        env.allowLocalModels = false;
-        env.allowRemoteModels = true;
-        env.remoteURL = 'https://huggingface.co/';
-        env.remotePathTemplate = '{model}/resolve/main/';
-        
-        // IMPORTANT: Disable Web Workers for browser extensions
-        env.backends.onnx.wasm.numThreads = 1;
-        env.backends.onnx.wasm.simd = false;
-        
-        console.log('Environment configured for browser extension');
-    }, []);
+  const [patterns, setPatterns] = useState([])
+  const [patternMatcher, setPatternMatcher] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-    // Initialize the model when component mounts
-    const initializeModel = async () => {
-      if (!classifier) {
-        setIsLoading(true)
-        setOutput('Loading model... This may take a few minutes on first load.');
-        try {
-          console.log('Starting model download...')
-          
-          // Create pipeline with specific options for browser extension
-          const pipe = await pipeline(task, modelName, {
-            revision: 'main',
-            cache_dir: null,
-            local_files_only: false,
-            device: 'cpu',
-          });
-          
-          console.log('Model loaded successfully:', pipe)
-          console.log('Pipeline type:', typeof pipe)
-          const result = await pipe('Hello, world!')
-          console.log(result)
-          setClassifier(() => pipe)
-          setOutput('Model loaded successfully! You can now analyze text.')
-        } catch (error) {
-          console.error('Error loading model:', error)
-          setOutput(`Error loading model: ${error.message}`)
-        } finally {
-          setIsLoading(false)
-        }
-      }
-    }
-  
-    const handleSubmit = async (e) => {
-      e.preventDefault()
-      if (!input.trim()) return
-  
-      if (!classifier) {
-        setOutput('Please load the model first by clicking "Load Model"')
-        return
-      }
-  
-      setIsLoading(true)
-      setOutput('Analyzing text...')
+  useEffect(() => {
+    // Initialize the pattern matcher and load saved settings
+    const initializePatterns = async () => {
+      const matcher = new RegexPatternMatcher()
+      
       try {
-        console.log('Analyzing input:', input)
+        // Load saved pattern settings from Chrome storage
+        const result = await chrome.storage.sync.get(null)
         
-        // Make sure classifier is a function before calling
-        if (typeof classifier === 'function') {
-          const result = await classifier(input)
-          console.log('Analysis result:', result)
-          
-          if (result && result.length > 0) {
-            const prediction = result[0]
-            setOutput(`Result: ${prediction.label} (${(prediction.score * 100).toFixed(2)}% confidence)`)
-          } else {
-            setOutput('No result returned from model.')
+        // Update pattern enabled status based on saved settings
+        matcher.getAllPatterns().forEach(pattern => {
+          const settingKey = `pattern_${pattern.id}_enabled`
+          if (settingKey in result) {
+            pattern.enabled = result[settingKey]
           }
-        } else {
-          console.error('Classifier is not a function:', typeof classifier)
-          setOutput('Model not properly loaded. Please try loading again.')
-        }
+        })
+        
+        setPatternMatcher(matcher)
+        setPatterns(matcher.getAllPatterns())
       } catch (error) {
-        console.error('Error processing text:', error)
-        setOutput(`Error processing text: ${error.message}`)
+        console.error('Failed to load pattern settings:', error)
+        // Fallback to default patterns if loading fails
+        setPatternMatcher(matcher)
+        setPatterns(matcher.getAllPatterns())
       } finally {
         setIsLoading(false)
       }
     }
-  
+
+    initializePatterns()
+  }, [])
+
+  const handlePatternToggle = async (patternId, enabled) => {
+    if (patternMatcher) {
+      patternMatcher.updatePatternStatus(patternId, enabled)
+      setPatterns(patternMatcher.getAllPatterns())
+      
+      try {
+        // Save settings to chrome storage
+        await chrome.storage.sync.set({
+          [`pattern_${patternId}_enabled`]: enabled
+        })
+
+        // Notify content script about the pattern change
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+        if (tab) {
+          chrome.tabs.sendMessage(tab.id, {
+            type: 'PATTERN_SETTINGS_UPDATED',
+            patternId: patternId,
+            enabled: enabled
+          })
+        }
+      } catch (error) {
+        console.error('Failed to save pattern setting:', error)
+      }
+    }
+  }
+
+  const handleSelectAll = async () => {
+    if (!patternMatcher) return
+
+    patterns.forEach(pattern => {
+      patternMatcher.updatePatternStatus(pattern.id, true)
+    })
+    setPatterns(patternMatcher.getAllPatterns())
+    
+    try {
+      // Save all settings
+      const settings = {}
+      patterns.forEach(pattern => {
+        settings[`pattern_${pattern.id}_enabled`] = true
+      })
+      await chrome.storage.sync.set(settings)
+
+      // Notify content script about all pattern changes
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (tab) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'ALL_PATTERNS_UPDATED',
+          patterns: patternMatcher.getAllPatterns()
+        })
+      }
+    } catch (error) {
+      console.error('Failed to save all pattern settings:', error)
+    }
+  }
+
+  const handleDeselectAll = async () => {
+    if (!patternMatcher) return
+
+    patterns.forEach(pattern => {
+      patternMatcher.updatePatternStatus(pattern.id, false)
+    })
+    setPatterns(patternMatcher.getAllPatterns())
+    
+    try {
+      // Save all settings
+      const settings = {}
+      patterns.forEach(pattern => {
+        settings[`pattern_${pattern.id}_enabled`] = false
+      })
+      await chrome.storage.sync.set(settings)
+
+      // Notify content script about all pattern changes
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (tab) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'ALL_PATTERNS_UPDATED',
+          patterns: patternMatcher.getAllPatterns()
+        })
+      }
+    } catch (error) {
+      console.error('Failed to save all pattern settings:', error)
+    }
+  }
+
+  if (isLoading) {
     return (
       <div className="popup-container">
-        <div className="popup-content">
-          <h1>Redact Demon</h1>
-          
-          {/* Show load button first */}
-          {!classifier && !isLoading && (
-            <div className="load-section">
-              <button onClick={initializeModel} className="init-button">
-                Load Model
-              </button>
-              <p className="load-info">Click to download and load the DistilBERT model (first time may take a few minutes)</p>
-            </div>
-          )}
-          
-          {/* Show form only after model is loaded */}
-          {(classifier || isLoading) && (
-            <form onSubmit={handleSubmit} className="input-form">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Enter text to analyze..."
-                disabled={isLoading || !classifier}
-                className="text-input"
-              />
-              <button 
-                type="submit" 
-                disabled={isLoading || !input.trim() || !classifier}
-                className="submit-button"
-              >
-                {isLoading ? 'Processing...' : 'Analyze'}
-              </button>
-            </form>
-          )}
-          
-          {/* Output box */}
-          <div className="output-container">
-            <label htmlFor="output" className="output-label">Output:</label>
-            <textarea
-              id="output"
-              value={output}
-              readOnly
-              placeholder="Results will appear here..."
-              className="output-box"
-              rows="4"
-            />
-          </div>
-        </div>
+        <h2>Redact Demon Settings</h2>
+        <div style={{ textAlign: 'center', padding: '20px' }}>Loading...</div>
       </div>
     )
+  }
+
+  return (
+    <div className="popup-container">
+      <h2 style={{ color: 'white' }}>Redact Demon Settings</h2>
+
+      <div className="controls">
+        <button onClick={handleSelectAll} className="control-button">
+          Select All
+        </button>
+        <button onClick={handleDeselectAll} className="control-button">
+          Deselect All
+        </button>
+      </div>
+
+      <div className="patterns-container">
+        <h3 style={{ color: 'white' }}>Redaction Patterns</h3>
+        {patterns.map(pattern => (
+          <div key={pattern.id} className="pattern-item">
+            <label className="pattern-label">
+              <input
+                type="checkbox"
+                checked={pattern.enabled}
+                onChange={(e) => handlePatternToggle(pattern.id, e.target.checked)}
+                className="pattern-checkbox"
+              />
+              <div className="pattern-info">
+                  
+                  <div className="pattern-details">
+                    <span className="pattern-title">{pattern.description}</span>
+                    <span className="pattern-replacement"> {pattern.replacement}</span>
+                </div>
+              </div>
+            </label>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }

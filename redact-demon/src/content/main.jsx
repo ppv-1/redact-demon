@@ -1,6 +1,5 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './views/App.jsx'
 
 console.log('[CRXJS] Hello world from content script!')
 
@@ -9,6 +8,6 @@ container.id = 'crxjs-app'
 document.body.appendChild(container)
 createRoot(container).render(
   <StrictMode>
-    <App />
+    
   </StrictMode>,
 )

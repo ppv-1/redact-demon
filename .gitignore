@@ -1,3 +1,6 @@
 venv
 node_modules
 package-lock.json
+dist
+
+/redact-demon/public/assets/distilbert-base-multilingual-cased-ner-hrl
