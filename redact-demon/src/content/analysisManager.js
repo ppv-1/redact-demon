@@ -81,6 +81,9 @@ export class AnalysisManager {
                 this.lastAnalysisResult
             )
 
+            // Show notification for detected entities
+            this.textMonitor.showEntityNotification(combinedResults)
+
         } catch (error) {
             console.error('Analysis failed:', error)
         }

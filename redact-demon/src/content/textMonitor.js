@@ -4,6 +4,7 @@ import { AnalysisManager } from './analysisManager.js'
 import { RedactionManager } from './redactionManager.js'
 import { MessageHandler } from './messageHandler.js'
 import { ContextMenuManager } from './contextMenuManager.js'
+import { NotificationManager } from './notificationManager.js'
 
 export default class TextMonitor {
     constructor() {
@@ -14,6 +15,8 @@ export default class TextMonitor {
         this.redactionManager = new RedactionManager(this)
         this.messageHandler = new MessageHandler(this)
         this.contextMenuManager = new ContextMenuManager()
+        this.notificationManager = new NotificationManager()
+        
         this.messageHandler.setupMessageListener()
         this.setupPatternSettingsListener()
         console.log('TextMonitor initialized with ModelService')
@@ -25,7 +28,7 @@ export default class TextMonitor {
             if (message.type === 'PATTERN_SETTINGS_UPDATED') {
                 this.analysisManager.updateRegexPattern(message.patternId, message.enabled)
                 console.log(`Updated pattern ${message.patternId} to ${message.enabled}`)
-                // Re-analyze cafter updating patterns
+                // Re-analyze after updating patterns
                 this.reAnalyzeCurrentText()
 
             } else if (message.type === 'ALL_PATTERNS_UPDATED') {
@@ -34,7 +37,6 @@ export default class TextMonitor {
                 })
                 console.log('Updated all pattern settings')
                 this.reAnalyzeCurrentText()
-
             }
         })
     }
@@ -66,6 +68,14 @@ export default class TextMonitor {
         if (currentText && currentText.trim()) {
             // Use shorter debounce for focus events
             this.analysisManager.debounceAnalysis(currentText, 200) // 200ms instead of 500ms
+        }
+    }
+
+    // Method to show notification for detected entities
+    showEntityNotification(entities) {
+        if (entities && entities.length > 0) {
+            const entityTypes = [...new Set(entities.map(e => e.entity))]
+            this.notificationManager.showNotification(entities.length, entityTypes)
         }
     }
 
@@ -109,6 +119,7 @@ export default class TextMonitor {
         this.isMonitoring = false
         this.stopAutoAnalysis()
         this.inputManager.stopMonitoring()
+        this.notificationManager.hideNotification()
         console.log('Text monitoring stopped')
     }
 
