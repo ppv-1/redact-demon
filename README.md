@@ -42,7 +42,7 @@ With LLM tools like ChatGPT, Gemini, and Claude becoming mainstream in workplace
 * Google Chrome
 
 ### Installation
-**Important: If you follow the optional step (needs ~4GB of space), the extension will start up faster since it won’t have to re-download the NER model.**
+**Important: If you follow the optional steps (needs ~4GB of space), the extension will start up faster since it won’t have to re-download the NER model.**
 
 
 
@@ -62,7 +62,7 @@ With LLM tools like ChatGPT, Gemini, and Claude becoming mainstream in workplace
     ├── .gitignore
     ├── LICENSE
     └── README.md
-3. (Optional) Download NER model from Google Drive [here](https://drive.google.com/uc?export=download&id=1_vWTB0wwjrmJEly-D4VuD3GVfCvx3-3t).
+3. (Optional) Download NER model from Google Drive [here](https://drive.google.com/uc?export=download&id=1_vWTB0wwjrmJEly-D4VuD3GVfCvx3-3t)
 3. (Optional) Extract zip file
 3. (Optional) Place its contents in this folder
     ```bash
@@ -108,7 +108,7 @@ With LLM tools like ChatGPT, Gemini, and Claude becoming mainstream in workplace
 2. Double layer of detection through Regex and the NER model
 3. Simple alert system for PII entities detected
 4. Local model to prevent any data from leaving your browser
-5. Customise which patterns you want to redact (dont redact email, redact urls)
+5. Customise which patterns you want to redact (E.g Don't redact emails, redact URLs)
 
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -142,8 +142,7 @@ Distributed under the GNU GENERAL PUBLIC LICENSE Version 3. See `LICENSE.txt` fo
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Acknowledgments
-Referenced regular expressions from [here](https://github.com/dneverson/PII_Sanitizer_Extension)
-Hugging Face NER model can be found [here](https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl)
+Referenced regular expressions from [here](https://github.com/dneverson/PII_Sanitizer_Extension)<br>Hugging Face NER model can be found [here](https://huggingface.co/Xenova/distilbert-base-multilingual-cased-ner-hrl)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
