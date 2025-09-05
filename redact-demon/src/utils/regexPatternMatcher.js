@@ -3,7 +3,7 @@ export class RegexPatternMatcher {
         this.patterns = [
             {
                 id: '1',
-                description: 'Email Addresses.',
+                description: 'Email Addresses',
                 pattern: '\\b[A-Za-z0-9_%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b',
                 replacement: '[EMAIL]',
                 enabled: true,
@@ -12,7 +12,7 @@ export class RegexPatternMatcher {
             },
             {
                 id: '2',
-                description: 'Credit Card Numbers (All Major Cards)',
+                description: 'Credit Card Numbers',
                 pattern: '\\b(?:3(?:0[0-5]|09|[68][0-9])[0-9]{11,14}|4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\\d{3})\\d{11}|62[0-9]{14,17})\\b',
                 replacement: '[CREDIT_CARD]',
                 enabled: true,
@@ -20,26 +20,17 @@ export class RegexPatternMatcher {
                 entityType: 'CREDIT_CARD'
             },
             {
-                id: '3',
-                description: 'Common API/Auth Tokens',
-                pattern: '\\b(?:bearer|api_key|auth_token)\\b\\s+([A-Za-z0-9._+\\-\\/]{20,})\\b',
-                replacement: '[API_TOKEN]',
+                id: "3",
+                description: "Singapore NRIC/FIN",
+                pattern: "\\b[STFGM]\\d{7}[A-Z]\\b",
+                replacement: "[NRIC]",
                 enabled: true,
                 isRegex: true,
-                entityType: 'API_TOKEN'
+                entityType: "NRIC"
             },
             {
                 id: '4',
-                description: 'AWS Access Keys',
-                pattern: '\\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\\b',
-                replacement: 'AWS_KEY_REMOVED',
-                enabled: true,
-                isRegex: true,
-                entityType: 'AWS_KEY'
-            },
-            {
-                id: '5',
-                description: 'Phone Numbers (All Common Formats)',
+                description: 'Phone Numbers (SG)',
                 pattern: "(?:\\+65[-.\\s]?)?(?:\\(?65\\)?[-.\\s]?)?[689]\\d{3}[-.\\s]?\\d{4}",
                 replacement: '[PHONE_NO]',
                 enabled: true,
@@ -47,7 +38,7 @@ export class RegexPatternMatcher {
                 entityType: 'PHONE'
             },
             {
-                id: '6',
+                id: '5',
                 description: 'Website URLs',
                 pattern: '\\b(?:(?:https?:|ftp:|sftp:)//)?(?:www\\.)?(?!(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b)[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\\.[a-zA-Z]{2,})+(?::[0-9]{1,5})?(?:/[^\\s]*)?\\b',
                 replacement: '[URL]',
@@ -56,7 +47,7 @@ export class RegexPatternMatcher {
                 entityType: 'URL'
             },
             {
-                id: '7',
+                id: '6',
                 description: 'MAC Addresses',
                 pattern: '\\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\\b',
                 replacement: '[MAC_ADDRESS]',
@@ -65,7 +56,7 @@ export class RegexPatternMatcher {
                 entityType: 'MAC_ADDRESS'
             },
             {
-                id: '8',
+                id: '7',
                 description: 'IPv4 Addresses',
                 pattern: '\\b(?<!:)(?<!://)(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?![a-zA-Z])\\b',
                 replacement: '[IPV4_ADDRESS]',
@@ -74,14 +65,24 @@ export class RegexPatternMatcher {
                 entityType: 'IP_ADDRESS'
             },
             {
-                id: "9",
-                description: "Singapore NRIC/FIN",
-                pattern: "\\b[STFGM]\\d{7}[A-Z]\\b",
-                replacement: "[NRIC]",
+                id: '8',
+                description: 'API/Auth Tokens',
+                pattern: '\\b(?:bearer|api_key|auth_token)\\b\\s+([A-Za-z0-9._+\\-\\/]{20,})\\b',
+                replacement: '[API_TOKEN]',
                 enabled: true,
                 isRegex: true,
-                entityType: "NRIC"
-            }
+                entityType: 'API_TOKEN'
+            },
+            {
+                id: '9',
+                description: 'AWS Access Keys',
+                pattern: '\\b(?:AKIA|ABIA|ACCA|ASIA)[A-Z0-9]{16}\\b',
+                replacement: 'AWS_KEY_REMOVED',
+                enabled: true,
+                isRegex: true,
+                entityType: 'AWS_KEY'
+            },
+            
         ]
     }
 

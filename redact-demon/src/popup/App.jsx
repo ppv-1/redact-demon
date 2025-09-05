@@ -157,9 +157,11 @@ export default function App() {
                 className="pattern-checkbox"
               />
               <div className="pattern-info">
-                <span className="pattern-title">{pattern.description}</span>
-                <span className="pattern-type">{pattern.entityType}</span>
-                <span className="pattern-replacement">→ {pattern.replacement}</span>
+                  
+                  <div className="pattern-details">
+                    <span className="pattern-title">{pattern.description}</span>
+                    <span className="pattern-replacement"> {pattern.replacement}</span>
+                </div>
               </div>
             </label>
           </div>

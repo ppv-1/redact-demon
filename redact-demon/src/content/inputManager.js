@@ -2,158 +2,166 @@ export class InputManager {
     constructor(textMonitor) {
         this.textMonitor = textMonitor
         this.currentInput = null
-        this.observers = []
+        this.lastText = ''
+        this.isMonitoring = false
+        this.attachedInputs = new Set()
     }
 
     startMonitoring() {
+        if (this.isMonitoring) return
+        this.isMonitoring = true
         this.attachToExistingInputs()
-        this.watchForNewInputs()
+        this.observeNewInputs()
     }
 
     stopMonitoring() {
-        this.observers.forEach(observer => observer.disconnect())
-        this.observers = []
-        this.currentInput = null
+        this.isMonitoring = false
+        this.detachFromAllInputs()
+        if (this.observer) {
+            this.observer.disconnect()
+        }
     }
 
     attachToExistingInputs() {
-        const selectors = [
-            'input[type="text"]',
-            'input[type="email"]',
-            'input[type="search"]',
-            'textarea',
-            '[contenteditable="true"]',
-            '[role="textbox"]',
-            '.chat-input',
-            '.message-input',
-            '#message',
-            '[placeholder*="message"]',
-            '[placeholder*="chat"]',
-            '[placeholder*="type"]',
-            '[placeholder*="search"]',
-            '[placeholder*="comment"]'
-        ]
-
-        let inputCount = 0
-        selectors.forEach(selector => {
-            document.querySelectorAll(selector).forEach(element => {
-                this.attachToInput(element)
-                inputCount++
-            })
+        // Find all input elements
+        const inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], textarea, [contenteditable="true"]')
+        
+        inputs.forEach(input => {
+            this.attachToInput(input)
         })
-
-        console.log(`Attached to ${inputCount} existing input elements`)
     }
 
-    attachToInput(element) {
-        if (element.dataset.redactDemonAttached) return
-        element.dataset.redactDemonAttached = 'true'
+    attachToInput(input) {
+        if (this.attachedInputs.has(input)) return
 
-        console.log('Attaching to input:', element.tagName, element.className, element.placeholder)
+        console.log('Attaching to input:', input.tagName, input.className)
+        
+        // Add focus listener for immediate analysis
+        input.addEventListener('focus', (e) => {
+            this.handleInputFocus(e.target)
+        })
 
-        element.addEventListener('focus', () => {
-            this.currentInput = element
-            console.log('Input focused:', {
-                tag: element.tagName,
-                placeholder: element.placeholder
-            })
+        // Add input listener for text changes
+        input.addEventListener('input', (e) => {
+            this.handleInputChange(e.target)
+        })
+
+        // Add selection change listener for when user selects text
+        input.addEventListener('selectionchange', (e) => {
+            if (e.target === this.currentInput) {
+                this.handleSelectionChange(e.target)
+            }
+        })
+
+        // Add click listener as backup for selection
+        input.addEventListener('click', (e) => {
+            if (e.target === this.currentInput) {
+                this.handleSelectionChange(e.target)
+            }
+        })
+
+        this.attachedInputs.add(input)
+    }
+
+    handleInputFocus(input) {
+        console.log('Input focused:', input.tagName)
+        
+        // Set as current input
+        this.currentInput = input
+        this.lastText = this.getTextFromInput(input)
+        
+        // Notify text monitor about focus event
+        this.textMonitor.onInputFocus(input)
+    }
+
+    handleInputChange(input) {
+        if (!this.textMonitor.isAutoAnalyzing) return
+
+        const currentText = this.getTextFromInput(input)
+        
+        // Only process if text actually changed
+        if (currentText !== this.lastText) {
+            this.lastText = currentText
+            this.currentInput = input
             
-            this.textMonitor.contextMenuManager.updateForCurrentInput(
-                this.textMonitor.getCurrentText(),
-                this.textMonitor.lastAnalysisResult
-            )
-        })
-
-        element.addEventListener('input', (e) => {
-            if (this.currentInput === element) {
-                const text = this.getElementText(element)
-                // console.log('Text changed:', text)
-
-                if (this.textMonitor.isAutoAnalyzing && text.trim().length > 3) {
-                    this.textMonitor.analysisManager.debounceAnalysis(text)
-                }
+            if (currentText.trim()) {
+                console.log('Text changed, analyzing:', currentText.substring(0, 50) + '...')
+                this.textMonitor.analysisManager.debounceAnalysis(currentText)
             }
-        })
-
-        element.addEventListener('blur', () => {
-            if (this.currentInput === element) {
-                this.currentInput = null
-                this.textMonitor.contextMenuManager.updateContextMenu(false, 0)
-            }
-        })
-
-        element.addEventListener('contextmenu', () => {
-            this.textMonitor.contextMenuManager.updateForCurrentInput(
-                this.textMonitor.getCurrentText(),
-                this.textMonitor.lastAnalysisResult
-            )
-        })
+        }
     }
 
-    watchForNewInputs() {
-        const observer = new MutationObserver(mutations => {
-            let newInputs = 0
+    handleSelectionChange(input) {
+        // When user selects text or moves cursor, re-analyze if there's content
+        const currentText = this.getTextFromInput(input)
+        if (currentText && currentText.trim()) {
+            console.log('Selection changed, re-analyzing text')
+            // Use shorter debounce for selection changes
+            this.textMonitor.analysisManager.debounceAnalysis(currentText, 300)
+        }
+    }
 
-            mutations.forEach(mutation => {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) {
+    observeNewInputs() {
+        this.observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if the node itself is an input
                         if (this.isInputElement(node)) {
                             this.attachToInput(node)
-                            newInputs++
                         }
-                        if (node.querySelectorAll) {
-                            node.querySelectorAll('input, textarea, [contenteditable="true"], [role="textbox"]').forEach(input => {
-                                this.attachToInput(input)
-                                newInputs++
-                            })
-                        }
+                        
+                        // Check for input descendants
+                        const inputs = node.querySelectorAll?.('input[type="text"], input[type="email"], input[type="password"], textarea, [contenteditable="true"]')
+                        inputs?.forEach(input => {
+                            this.attachToInput(input)
+                        })
                     }
                 })
             })
-
-            if (newInputs > 0) {
-                console.log(`Found ${newInputs} new input elements`)
-            }
         })
 
-        observer.observe(document.body, {
+        this.observer.observe(document.body, {
             childList: true,
             subtree: true
         })
-
-        this.observers.push(observer)
     }
 
     isInputElement(element) {
-        return element.tagName === 'INPUT' ||
+        return (
+            (element.tagName === 'INPUT' && ['text', 'email', 'password'].includes(element.type)) ||
             element.tagName === 'TEXTAREA' ||
-            element.contentEditable === 'true' ||
-            element.getAttribute('role') === 'textbox'
+            element.contentEditable === 'true'
+        )
+    }
+
+    detachFromAllInputs() {
+        this.attachedInputs.clear()
+        this.currentInput = null
     }
 
     getCurrentText() {
         if (!this.currentInput) return ''
-        return this.getElementText(this.currentInput)
+        return this.getTextFromInput(this.currentInput)
     }
 
-    getElementText(element) {
-        if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-            return element.value
-        } else if (element.contentEditable === 'true') {
-            return element.textContent || element.innerText
+    getTextFromInput(input) {
+        if (input.contentEditable === 'true') {
+            return input.textContent || input.innerText || ''
         }
-        return ''
+        return input.value || ''
     }
 
     replaceCurrentText(newText) {
         if (!this.currentInput) return
 
-        if (this.currentInput.tagName === 'INPUT' || this.currentInput.tagName === 'TEXTAREA') {
-            this.currentInput.value = newText
-            this.currentInput.dispatchEvent(new Event('input', { bubbles: true }))
-        } else if (this.currentInput.contentEditable === 'true') {
+        if (this.currentInput.contentEditable === 'true') {
             this.currentInput.textContent = newText
-            this.currentInput.dispatchEvent(new Event('input', { bubbles: true }))
+        } else {
+            this.currentInput.value = newText
         }
+        
+        // Update last text to prevent re-analysis
+        this.lastText = newText
     }
 }

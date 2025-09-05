@@ -1,91 +1,98 @@
 import { pipeline, env } from '@xenova/transformers'
 
 class ModelService {
-  constructor() {
-    this.classifier = null
-    this.isInitialized = false
-    this.task = 'token-classification'
-    // this.modelName = 'Xenova/distilbert-base-uncased-finetuned-conll03-english'
-    // this.modelName = 'Xenova/distilbert-base-uncased-finetuned-sst-2-english'
-    this.modelName = 'Xenova/distilbert-base-multilingual-cased-ner-hrl'
-    this.configureEnvironment()
-  }
-
-  configureEnvironment() {
-    env.useBrowserCache = false
-    env.allowLocalModels = false
-    env.allowRemoteModels = true
-    env.remoteURL = 'https://huggingface.co/'
-    env.remotePathTemplate = '{model}/resolve/main/'
-    env.backends.onnx.wasm.numThreads = 1
-    env.backends.onnx.wasm.simd = false
-    console.log('Environment configured for browser extension')
-  }
-
-  async initializeModel() {
-    if (this.isInitialized) {
-      return this.classifier
+    constructor() {
+        this.model = null
+        this.tokenizer = null
+        this.modelLoaded = false
+        this.setupEnvironment()
     }
 
-    try {
-      console.log('Starting model download...')
-      
-      const pipe = await pipeline(this.task, this.modelName, {
-        revision: 'main',
-        cache_dir: null,
-        local_files_only: false,
-        device: 'cpu',
-      })
-      
-      console.log('Model loaded successfully:', pipe)
-      
-      // Test the model
-      const testResult = await pipe('My name is Sarah and I live in London')
-      console.log('Test result:', testResult)
-      
-      this.classifier = pipe
-      this.isInitialized = true
-      
-      return pipe
-    } catch (error) {
-      console.error('Error loading model:', error)
-      throw new Error(`Failed to load model: ${error.message}`)
-    }
-  }
-
-  async analyzeText(text) {
-    if (!this.isInitialized || !this.classifier) {
-      throw new Error('Model not initialized. Please load the model first.')
+    setupEnvironment() {
+        // Enable local files and set custom model path
+        env.allowLocalModels = true
+        env.allowRemoteModels = false
+        env.localModelPath = chrome.runtime.getURL('public/assets/')
+        
+        // Set cache directory for Chrome extension
+        env.cacheDir = 'models'
+        
+        console.log('Model path set to:', env.localModelPath)
     }
 
-    if (!text?.trim()) {
-      throw new Error('Text input is required')
+    async initializeModel() {
+        if (this.modelLoaded) {
+            console.log('Model already loaded')
+            return
+        }
+
+        try {
+            console.log('Starting model download...')
+            
+            // Get the extension URL for the model
+            const modelPath = 'distilbert-base-multilingual-cased-ner-hrl'
+            const fullModelPath = chrome.runtime.getURL(`public/assets/${modelPath}/`)
+            
+            console.log('Loading model from:', fullModelPath)
+            
+            // Create pipeline with local model path
+            this.model = await pipeline(
+                'token-classification',
+                modelPath,
+                {
+                    device: 'wasm',
+                    cache_dir: env.cacheDir,
+                    local_files_only: true
+                }
+            )
+
+            this.modelLoaded = true
+            console.log('Model loaded successfully')
+            
+        } catch (error) {
+            console.error('Error loading model:', error)
+            this.modelLoaded = false
+            throw new Error(`Failed to load model: ${error.message}`)
+        }
     }
 
-    try {
-      // console.log('Analyzing input:', text)
-      
-      if (typeof this.classifier !== 'function') {
-        throw new Error('Model not properly loaded')
-      }
+    async analyzeText(text) {
+        if (!this.modelLoaded || !this.model) {
+            throw new Error('Model not loaded. Please initialize the model first.')
+        }
 
-      const result = await this.classifier(text)
-      console.log('Analysis result:', result)
-      
-      if (!result || result.length === 0) {
-        console.log('No result returned from model')
-      }
+        try {
+            const results = await this.model(text)
+            
+            // Filter and process results
+            const processedResults = results
+                .filter(result => result.score > 0.5) // Only high confidence predictions
+                .map(result => ({
+                    word: result.word,
+                    entity: result.entity,
+                    score: result.score,
+                    start: result.start,
+                    end: result.end,
+                    index: result.index || 0
+                }))
 
-      return result
-    } catch (error) {
-      console.error('Error processing text:', error)
-      throw new Error(`Failed to analyze text: ${error.message}`)
+            return processedResults
+        } catch (error) {
+            console.error('Analysis failed:', error)
+            return []
+        }
     }
-  }
 
-  isModelLoaded() {
-    return this.isInitialized && this.classifier !== null
-  }
+    isModelLoaded() {
+        return this.modelLoaded && this.model !== null
+    }
+
+    getModelInfo() {
+        return {
+            loaded: this.modelLoaded,
+            modelPath: env.localModelPath
+        }
+    }
 }
 
 // Export singleton instance

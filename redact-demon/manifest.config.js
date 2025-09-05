@@ -38,4 +38,13 @@ export default defineManifest({
   side_panel: {
     default_path: 'src/sidepanel/index.html',
   },
+  web_accessible_resources: [
+    {
+      resources: [
+        'public/assets/distilbert-base-multilingual-cased-ner-hrl/*',
+        'public/assets/distilbert-base-multilingual-cased-ner-hrl/onnx/*'
+      ],
+      matches: ['<all_urls>'],
+    },
+  ],
 })

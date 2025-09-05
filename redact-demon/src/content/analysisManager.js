@@ -29,12 +29,12 @@ export class AnalysisManager {
         }
     }
 
-    debounceAnalysis(text) {
+    debounceAnalysis(text, delay = 500) {
         this.clearDebounceTimer()
 
         this.debounceTimer = setTimeout(() => {
             this.performAnalysis(text)
-        }, 500)
+        }, delay)
     }
 
     async performAnalysis(text) {

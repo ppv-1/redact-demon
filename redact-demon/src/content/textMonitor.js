@@ -14,7 +14,6 @@ export default class TextMonitor {
         this.redactionManager = new RedactionManager(this)
         this.messageHandler = new MessageHandler(this)
         this.contextMenuManager = new ContextMenuManager()
-        
         this.messageHandler.setupMessageListener()
         this.setupPatternSettingsListener()
         console.log('TextMonitor initialized with ModelService')
@@ -26,13 +25,48 @@ export default class TextMonitor {
             if (message.type === 'PATTERN_SETTINGS_UPDATED') {
                 this.analysisManager.updateRegexPattern(message.patternId, message.enabled)
                 console.log(`Updated pattern ${message.patternId} to ${message.enabled}`)
+                // Re-analyze cafter updating patterns
+                this.reAnalyzeCurrentText()
+
             } else if (message.type === 'ALL_PATTERNS_UPDATED') {
                 message.patterns.forEach(pattern => {
                     this.analysisManager.updateRegexPattern(pattern.id, pattern.enabled)
                 })
                 console.log('Updated all pattern settings')
+                this.reAnalyzeCurrentText()
+
             }
         })
+    }
+
+    async reAnalyzeCurrentText() {
+        // Only re-analyze if we're currently monitoring and have an active input
+        if (!this.isMonitoring || !this.currentInput) {
+            return
+        }
+
+        const currentText = this.getCurrentText()
+        if (currentText && currentText.trim()) {
+            console.log('Re-analyzing text after pattern change...')
+
+            // Trigger analysis with current text
+            this.analysisManager.debounceAnalysis(currentText)
+        }
+    }
+
+    // Method called when input is focused/selected
+    onInputFocus(inputElement) {
+        console.log('Input focused, analyzing text')
+
+        // Clear any existing debounce timer
+        this.analysisManager.clearDebounceTimer()
+
+        // Get current text and analyze immediately
+        const currentText = this.getCurrentText()
+        if (currentText && currentText.trim()) {
+            // Use shorter debounce for focus events
+            this.analysisManager.debounceAnalysis(currentText, 200) // 200ms instead of 500ms
+        }
     }
 
     async initializeModel() {
@@ -111,13 +145,11 @@ export default class TextMonitor {
 // Initialize the text monitor
 const textMonitor = new TextMonitor()
 
-// Auto-start monitoring after page load
+// Start monitoring
 setTimeout(async () => {
-    console.log('Auto-starting Redact Demon')
-    
-    // Load pattern settings first
+
     await textMonitor.loadPatternSettings()
-    
+
     try {
         await textMonitor.initializeModel()
         console.log("Model Loaded")
@@ -128,5 +160,4 @@ setTimeout(async () => {
     textMonitor.startMonitoring()
 }, 1000)
 
-// Expose for testing
 window.redactDemonMonitor = textMonitor
