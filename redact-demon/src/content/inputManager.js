@@ -67,7 +67,7 @@ export class InputManager {
         element.addEventListener('input', (e) => {
             if (this.currentInput === element) {
                 const text = this.getElementText(element)
-                console.log('Text changed:', text)
+                // console.log('Text changed:', text)
 
                 if (this.textMonitor.isAutoAnalyzing && text.trim().length > 3) {
                     this.textMonitor.analysisManager.debounceAnalysis(text)

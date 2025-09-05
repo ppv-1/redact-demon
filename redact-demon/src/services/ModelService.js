@@ -63,7 +63,7 @@ class ModelService {
     }
 
     try {
-      console.log('Analyzing input:', text)
+      // console.log('Analyzing input:', text)
       
       if (typeof this.classifier !== 'function') {
         throw new Error('Model not properly loaded')
@@ -73,7 +73,7 @@ class ModelService {
       console.log('Analysis result:', result)
       
       if (!result || result.length === 0) {
-        throw new Error('No result returned from model')
+        console.log('No result returned from model')
       }
 
       return result

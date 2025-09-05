@@ -56,10 +56,14 @@ export class EntityProcessor {
                     currentGroup = [current]
                 }
             }
-            // For ML entities, use token indices
+            // For ML entities, use token indices and B-/I- logic
             else if (current.source === 'ml' && previous.source === 'ml') {
-                if (current.index === previous.index + 1 && 
-                    (current.entity.startsWith('I-') || previous.entity.startsWith('B-'))) {
+                const isConsecutive = current.index === previous.index + 1
+                const isValidSequence = 
+                    (previous.entity.startsWith('B-') && current.entity.startsWith('I-')) ||
+                    (previous.entity.startsWith('I-') && current.entity.startsWith('I-'))
+                
+                if (isConsecutive && isValidSequence) {
                     currentGroup.push(current)
                 } else {
                     groups.push(currentGroup)
@@ -96,7 +100,8 @@ export class EntityProcessor {
             }
             // Handle ML entities (need to find character positions)
             else {
-                const fullEntity = group.map(token => token.word).join('').replace(/^##/, '')
+                // Reconstruct the full entity name from subword tokens
+                const fullEntity = this.reconstructEntityFromTokens(group)
                 const charPosition = this.findEntityInText(originalText, fullEntity, group[0].word)
                 
                 if (charPosition !== -1) {
@@ -142,5 +147,27 @@ export class EntityProcessor {
         }
         
         return tokenPositions.length > 0 ? tokenPositions[0] : -1
+    }
+
+    /**
+     * Reconstruct entity name from subword tokens
+     * @param {Array} tokens - Array of token objects
+     * @returns {string} Reconstructed entity name
+     */
+    reconstructEntityFromTokens(tokens) {
+        let result = ''
+        
+        for (const token of tokens) {
+            if (token.word.startsWith('##')) {
+                // Subword token - append without space
+                result += token.word.substring(2)
+            } else {
+                // Regular token - add with space if not first
+                if (result) result += ' '
+                result += token.word
+            }
+        }
+        
+        return result
     }
 }

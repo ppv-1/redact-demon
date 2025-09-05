@@ -16,11 +16,37 @@ export default class TextMonitor {
         this.contextMenuManager = new ContextMenuManager()
         
         this.messageHandler.setupMessageListener()
+        this.setupPatternSettingsListener()
         console.log('TextMonitor initialized with ModelService')
+    }
+
+    setupPatternSettingsListener() {
+        // Listen for pattern setting updates from popup
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.type === 'PATTERN_SETTINGS_UPDATED') {
+                this.analysisManager.updateRegexPattern(message.patternId, message.enabled)
+                console.log(`Updated pattern ${message.patternId} to ${message.enabled}`)
+            } else if (message.type === 'ALL_PATTERNS_UPDATED') {
+                message.patterns.forEach(pattern => {
+                    this.analysisManager.updateRegexPattern(pattern.id, pattern.enabled)
+                })
+                console.log('Updated all pattern settings')
+            }
+        })
     }
 
     async initializeModel() {
         return await this.analysisManager.initializeModel()
+    }
+
+    async loadPatternSettings() {
+        // Load saved pattern settings
+        try {
+            await this.analysisManager.regexMatcher.loadSettings()
+            console.log('Pattern settings loaded successfully')
+        } catch (error) {
+            console.warn('Failed to load pattern settings:', error)
+        }
     }
 
     startAutoAnalysis() {
@@ -88,6 +114,10 @@ const textMonitor = new TextMonitor()
 // Auto-start monitoring after page load
 setTimeout(async () => {
     console.log('Auto-starting Redact Demon')
+    
+    // Load pattern settings first
+    await textMonitor.loadPatternSettings()
+    
     try {
         await textMonitor.initializeModel()
         console.log("Model Loaded")

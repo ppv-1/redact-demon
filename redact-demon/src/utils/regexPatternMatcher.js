@@ -72,8 +72,51 @@ export class RegexPatternMatcher {
                 enabled: true,
                 isRegex: true,
                 entityType: 'IP_ADDRESS'
+            },
+            {
+                id: "9",
+                description: "Singapore NRIC/FIN",
+                pattern: "\\b[STFGM]\\d{7}[A-Z]\\b",
+                replacement: "[NRIC]",
+                enabled: true,
+                isRegex: true,
+                entityType: "NRIC"
             }
         ]
+    }
+
+    /**
+     * Load pattern settings from Chrome storage
+     * @returns {Promise<void>}
+     */
+    async loadSettings() {
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            try {
+                const result = await chrome.storage.sync.get(null)
+                
+                this.patterns.forEach(pattern => {
+                    const settingKey = `pattern_${pattern.id}_enabled`
+                    if (settingKey in result) {
+                        pattern.enabled = result[settingKey]
+                    }
+                })
+            } catch (error) {
+                console.warn('Failed to load pattern settings:', error)
+            }
+        }
+    }
+
+    /**
+     * Apply pattern settings from saved configuration
+     * @param {Object} settings - Settings object from Chrome storage
+     */
+    applySettings(settings) {
+        this.patterns.forEach(pattern => {
+            const settingKey = `pattern_${pattern.id}_enabled`
+            if (settingKey in settings) {
+                pattern.enabled = settings[settingKey]
+            }
+        })
     }
 
     /**
@@ -83,27 +126,27 @@ export class RegexPatternMatcher {
      */
     analyzeText(text) {
         const detectedEntities = []
-        
+
         // Process patterns in order (API tokens before phone numbers as noted)
         const enabledPatterns = this.patterns.filter(p => p.enabled)
-        
+
         for (const pattern of enabledPatterns) {
             try {
                 const regex = new RegExp(pattern.pattern, 'gi')
                 let match
-                
+
                 while ((match = regex.exec(text)) !== null) {
                     const matchedText = match[0]
                     const startIndex = match.index
                     const endIndex = startIndex + matchedText.length
-                    
+
                     // Check if this position is already covered by a previous match
-                    const isOverlapping = detectedEntities.some(entity => 
+                    const isOverlapping = detectedEntities.some(entity =>
                         (startIndex >= entity.start && startIndex < entity.end) ||
                         (endIndex > entity.start && endIndex <= entity.end) ||
                         (startIndex <= entity.start && endIndex >= entity.end)
                     )
-                    
+
                     if (!isOverlapping) {
                         detectedEntities.push({
                             word: matchedText,
@@ -123,7 +166,7 @@ export class RegexPatternMatcher {
                 console.warn(`Error processing regex pattern ${pattern.id}:`, error)
             }
         }
-        
+
         // Sort by start position
         return detectedEntities.sort((a, b) => a.start - b.start)
     }
@@ -188,14 +231,10 @@ export class RegexPatternMatcher {
         this.patterns.push(pattern)
     }
 
-    /**
-     * Remove pattern by ID
-     * @param {string} patternId - Pattern ID to remove
-     */
-    removePattern(patternId) {
-        const index = this.patterns.findIndex(p => p.id === patternId)
-        if (index > -1) {
-            this.patterns.splice(index, 1)
+    disablePattern(patternId) {
+        const pattern = this.getPattern(patternId)
+        if (pattern) {
+            pattern.enabled = false
         }
     }
 }

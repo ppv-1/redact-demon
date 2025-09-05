@@ -85,7 +85,7 @@ export class AnalysisManager {
             console.error('Analysis failed:', error)
         }
     }
-
+        
     /**
      * Combine regex and ML results, giving priority to regex matches
      * @param {Array} regexResults - Results from regex pattern matching
@@ -133,13 +133,24 @@ export class AnalysisManager {
      * @returns {number} Character position
      */
     getCharacterPosition(text, entity) {
-        // This is a simplified approach - you might need to improve this
-        // based on how your ML model tokenizes text
-        const words = text.split(/\s+/)
-        let charPosition = 0
+        // For tokenized models, we need to reconstruct the original text positions
+        // by tracking actual character positions rather than token positions
         
-        for (let i = 0; i < entity.index && i < words.length; i++) {
-            charPosition += words[i].length + 1 // +1 for space
+        // Split text into tokens similar to how the model would
+        const tokens = text.split(/(\s+)/) // Keep whitespace as separate tokens
+        let charPosition = 0
+        let tokenIndex = 0
+        
+        // Find the character position by iterating through tokens
+        for (const token of tokens) {
+            if (tokenIndex === entity.index) {
+                return charPosition
+            }
+            
+            if (token.trim()) { // Only count non-whitespace tokens
+                tokenIndex++
+            }
+            charPosition += token.length
         }
         
         return charPosition
