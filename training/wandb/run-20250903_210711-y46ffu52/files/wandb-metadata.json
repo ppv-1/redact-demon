@@ -1,0 +1,36 @@
+{
+  "os":  "Windows-10-10.0.26100-SP0",
+  "python":  "CPython 3.10.6",
+  "startedAt":  "2025-09-03T13:07:11.159113Z",
+  "program":  "c:\\Users\\1hchu\\OneDrive\\Documents\\GitHub\\redact-demon\\training\\main.ipynb",
+  "codePath":  "main.ipynb",
+  "codePathLocal":  "main.ipynb",
+  "email":  "1hchuazhijie@gmail.com",
+  "root":  "c:\\Users\\1hchu\\OneDrive\\Documents\\GitHub\\redact-demon\\training",
+  "host":  "DESKTOP-5FVAKOO",
+  "executable":  "c:\\Users\\1hchu\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+  "cpu_count":  6,
+  "cpu_count_logical":  12,
+  "gpu":  "NVIDIA GeForce RTX 3060",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "499265114112",
+      "used":  "418818703360"
+    }
+  },
+  "memory":  {
+    "total":  "17101402112"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 3060",
+      "memoryTotal":  "12884901888",
+      "cudaCores":  3584,
+      "architecture":  "Ampere",
+      "uuid":  "GPU-fb2981d8-51b0-1c49-4f26-738268e095ba"
+    }
+  ],
+  "cudaVersion":  "13.0",
+  "writerId":  "mmt7i5znemkhq4qswdqewurh3tuafeet"
+}
