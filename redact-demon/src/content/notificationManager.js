@@ -1,8 +1,11 @@
 export class NotificationManager {
     constructor() {
         this.currentNotification = null
+        this.currentModelNotification = null
         this.hideTimer = null
+        this.modelHideTimer = null
         this.injectStyles()
+        this.setupModelNotificationListener()
     }
 
     injectStyles() {
@@ -41,6 +44,40 @@ export class NotificationManager {
                 transform: translateX(-5px);
             }
 
+            .redact-demon-model-notification {
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                z-index: 10000;
+                opacity: 0;
+                transform: translateX(100%);
+                transition: all 0.3s ease-in-out;
+                cursor: pointer;
+                max-width: 320px;
+            }
+
+            .redact-demon-model-notification.success {
+                background: #28a745;
+            }
+
+            .redact-demon-model-notification.show {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            .redact-demon-model-notification:hover {
+                opacity: 0.9;
+                transform: translateX(-5px);
+            }
+
             .redact-demon-notification-content {
                 display: flex;
                 align-items: center;
@@ -72,6 +109,14 @@ export class NotificationManager {
             }
         `
         document.head.appendChild(styleSheet)
+    }
+
+    setupModelNotificationListener() {
+        // Listen for custom model notification events
+        document.addEventListener('redactDemonModelNotification', (event) => {
+            const { message, type } = event.detail
+            this.showModelNotification(message, type)
+        })
     }
 
     showNotification(entityCount, entityTypes = []) {
@@ -136,6 +181,49 @@ export class NotificationManager {
         console.log(`Notification shown: ${entityCount} entities detected`)
     }
 
+    showModelNotification(message, type = 'info') {
+        // Remove existing model notification
+        this.hideModelNotification()
+
+        // Create notification element
+        const notification = document.createElement('div')
+        notification.className = `redact-demon-model-notification ${type}`
+        
+        
+        // Create content
+        notification.innerHTML = `
+            <div class="redact-demon-notification-content">
+                <span class="redact-demon-notification-text">${message}</span>
+                <span class="redact-demon-notification-close">×</span>
+            </div>
+        `
+        
+        // Add close handler
+        const closeBtn = notification.querySelector('.redact-demon-notification-close')
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this.hideModelNotification()
+        })
+        
+        // Add click handler for notification body
+        notification.addEventListener('click', () => {
+            this.hideModelNotification()
+        })
+        
+        // Add to page
+        document.body.appendChild(notification)
+        this.currentModelNotification = notification
+        
+        requestAnimationFrame(() => {
+            notification.classList.add('show')
+        })
+        
+        this.modelHideTimer = setTimeout(() => {
+            this.hideModelNotification()
+        }, 4000)
+        
+    }
+
     hideNotification() {
         if (this.hideTimer) {
             clearTimeout(this.hideTimer)
@@ -150,12 +238,31 @@ export class NotificationManager {
                     this.currentNotification.parentNode.removeChild(this.currentNotification)
                 }
                 this.currentNotification = null
-            }, 300) // Wait for animation to complete
+            }, 300)
+        }
+    }
+
+    hideModelNotification() {
+        if (this.modelHideTimer) {
+            clearTimeout(this.modelHideTimer)
+            this.modelHideTimer = null
+        }
+        
+        if (this.currentModelNotification) {
+            this.currentModelNotification.classList.remove('show')
+            
+            setTimeout(() => {
+                if (this.currentModelNotification && this.currentModelNotification.parentNode) {
+                    this.currentModelNotification.parentNode.removeChild(this.currentModelNotification)
+                }
+                this.currentModelNotification = null
+            }, 300)
         }
     }
 
     destroy() {
         this.hideNotification()
+        this.hideModelNotification()
         const styles = document.getElementById('redact-demon-notification-styles')
         if (styles) {
             styles.remove()

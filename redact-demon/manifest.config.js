@@ -24,11 +24,17 @@ export default defineManifest({
   content_scripts: [
     {
       js: ['src/content/main.jsx'],
-      matches: ['https://*/*'],
+      matches: [
+        '*://gemini.google.com/*',
+        '*://chatgpt.com/*',
+      ],
     },
     {
       js: ['src/content/textMonitor.js'],
-      matches: ['<all_urls>'],
+      matches: [
+        '*://gemini.google.com/*',
+        '*://chatgpt.com/*',
+      ],
       run_at: 'document_end'
     }
   ],
@@ -44,7 +50,10 @@ export default defineManifest({
         'public/assets/distilbert-base-multilingual-cased-ner-hrl/*',
         'public/assets/distilbert-base-multilingual-cased-ner-hrl/onnx/*'
       ],
-      matches: ['<all_urls>'],
+      matches: [
+        '*://gemini.google.com/*',
+        '*://chatgpt.com/*',
+      ],
     },
   ],
 })

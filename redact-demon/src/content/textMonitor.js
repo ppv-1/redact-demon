@@ -19,7 +19,17 @@ export default class TextMonitor {
         
         this.messageHandler.setupMessageListener()
         this.setupPatternSettingsListener()
+        this.setupModelNotificationListener()
         console.log('TextMonitor initialized with ModelService')
+    }
+
+    setupModelNotificationListener() {
+        // Listen for model notification messages
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.type === 'SHOW_MODEL_NOTIFICATION') {
+                this.notificationManager.showModelNotification(message.message, message.notificationType)
+            }
+        })
     }
 
     setupPatternSettingsListener() {
@@ -161,14 +171,18 @@ const textMonitor = new TextMonitor()
 
 // Start monitoring
 setTimeout(async () => {
-
     await textMonitor.loadPatternSettings()
 
     try {
         await textMonitor.initializeModel()
-        console.log("Model Loaded")
+        console.log("Model initialization completed")
     } catch (error) {
-        console.log("Model initialization failed")
+        console.log("Model initialization failed:", error.message)
+        // Show error notification
+        textMonitor.notificationManager.showModelNotification(
+            'Failed to load ML model. Using regex patterns only.', 
+            'error'
+        )
     }
 
     textMonitor.startMonitoring()
