@@ -72,10 +72,13 @@ export default class TextMonitor {
     }
 
     // Method to show notification for detected entities
-    showEntityNotification(entities) {
-        if (entities && entities.length > 0) {
-            const entityTypes = [...new Set(entities.map(e => e.entity))]
-            this.notificationManager.showNotification(entities.length, entityTypes)
+    showEntityNotification(groupedEntities) {
+        if (groupedEntities && groupedEntities.length > 0) {
+            // Extract entity types from grouped entities
+            const entityTypes = [...new Set(groupedEntities.map(e => e.entityType))]
+            this.notificationManager.showNotification(groupedEntities.length, entityTypes)
+            
+            console.log(`Notification shown for ${groupedEntities.length} entity groups of types: ${entityTypes.join(', ')}`)
         }
     }
 

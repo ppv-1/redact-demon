@@ -1,13 +1,16 @@
 import { RegexPatternMatcher } from '../utils/regexPatternMatcher.js'
+import { EntityProcessor } from '../utils/entityProcessor.js'
 
 export class AnalysisManager {
     constructor(textMonitor, modelService) {
         this.textMonitor = textMonitor
         this.modelService = modelService
         this.regexMatcher = new RegexPatternMatcher()
+        this.entityProcessor = new EntityProcessor()
         this.debounceTimer = null
         this.lastAnalysisResult = null
         this.lastRegexResult = null
+        this.lastGroupedEntities = null
     }
 
     async initializeModel() {
@@ -62,7 +65,13 @@ export class AnalysisManager {
             const combinedResults = this.combineAnalysisResults(regexResults, mlResults, text)
             this.lastAnalysisResult = combinedResults
 
+            // Step 4: Process and group entities using EntityProcessor
+            const namedEntities = this.entityProcessor.getNamedEntities(combinedResults)
+            const groupedEntitiesData = this.processGroupedEntities(text, namedEntities)
+            this.lastGroupedEntities = groupedEntitiesData
+
             console.log(`Combined analysis result: ${combinedResults.length} total entities`)
+            console.log(`Grouped entities result: ${groupedEntitiesData.totalGroups} entity groups`)
             
             // Log detailed results
             combinedResults.forEach((entity, index) => {
@@ -75,27 +84,70 @@ export class AnalysisManager {
                 })
             })
 
-            // Update context menu
+            // Update context menu with grouped entity count
             this.textMonitor.contextMenuManager.updateForCurrentInput(
                 this.textMonitor.getCurrentText(),
-                this.lastAnalysisResult
+                groupedEntitiesData.positions // Pass grouped positions instead of raw entities
             )
 
-            // Show notification for detected entities
-            this.textMonitor.showEntityNotification(combinedResults)
+            // Show notification with grouped entity count
+            this.textMonitor.showEntityNotification(groupedEntitiesData.positions)
 
         } catch (error) {
             console.error('Analysis failed:', error)
         }
     }
-        
+
     /**
-     * Combine regex and ML results, giving priority to regex matches
-     * @param {Array} regexResults - Results from regex pattern matching
-     * @param {Array} mlResults - Results from ML model
+     * Process entities using EntityProcessor to get grouped counts
      * @param {string} text - Original text
-     * @returns {Array} Combined results
+     * @param {Array} entities - Named entities from analysis
+     * @returns {Object} Processed entity data with grouped counts
      */
+    processGroupedEntities(text, entities) {
+        if (entities.length === 0) {
+            return {
+                totalGroups: 0,
+                positions: [],
+                entitiesByType: {},
+                summary: {}
+            }
+        }
+
+        // Group entities by type
+        const entitiesByType = this.entityProcessor.groupEntitiesByType(entities)
+        const allPositions = []
+        const summary = {}
+
+        // Process each entity type
+        for (const [entityType, typeEntities] of Object.entries(entitiesByType)) {
+            // Group consecutive tokens for this entity type
+            const nameGroups = this.entityProcessor.groupConsecutiveTokens(typeEntities)
+            
+            // Get character positions for grouped entities
+            const characterPositions = this.entityProcessor.getCharacterPositions(text, nameGroups, entityType)
+            
+            allPositions.push(...characterPositions)
+            summary[entityType] = {
+                rawCount: typeEntities.length,
+                groupedCount: characterPositions.length,
+                positions: characterPositions
+            }
+
+            console.log(`${entityType}: ${typeEntities.length} raw entities -> ${characterPositions.length} grouped entities`)
+        }
+
+        // Sort positions by start position
+        allPositions.sort((a, b) => a.start - b.start)
+
+        return {
+            totalGroups: allPositions.length,
+            positions: allPositions,
+            entitiesByType: entitiesByType,
+            summary: summary
+        }
+    }
+
     combineAnalysisResults(regexResults, mlResults, text) {
         const combined = [...regexResults]
         
@@ -129,12 +181,6 @@ export class AnalysisManager {
         return combined.sort((a, b) => (a.start || 0) - (b.start || 0))
     }
 
-    /**
-     * Get character position for ML entity
-     * @param {string} text - Original text
-     * @param {Object} entity - ML entity
-     * @returns {number} Character position
-     */
     getCharacterPosition(text, entity) {
         // For tokenized models, we need to reconstruct the original text positions
         // by tracking actual character positions rather than token positions
@@ -176,14 +222,22 @@ export class AnalysisManager {
             
             const combinedResults = this.combineAnalysisResults(regexResults, mlResults, text)
             
+            // Process grouped entities
+            const namedEntities = this.entityProcessor.getNamedEntities(combinedResults)
+            const groupedEntitiesData = this.processGroupedEntities(text, namedEntities)
+            
             console.log('Manual analysis result:', combinedResults)
+            console.log('Grouped entities:', groupedEntitiesData)
+            
             return {
                 success: true,
                 result: combinedResults,
+                groupedResult: groupedEntitiesData,
                 regexEntities: regexResults.length,
                 mlEntities: mlResults.length,
                 totalEntities: combinedResults.length,
-                message: `Analysis complete: ${combinedResults.length} entities found (${regexResults.length} regex, ${mlResults.length} ML)`
+                totalGroups: groupedEntitiesData.totalGroups,
+                message: `Analysis complete: ${groupedEntitiesData.totalGroups} entity groups found (${combinedResults.length} total entities)`
             }
         } catch (error) {
             return { success: false, message: error.message }
@@ -194,6 +248,10 @@ export class AnalysisManager {
         return this.lastAnalysisResult
     }
 
+    getLastGroupedEntities() {
+        return this.lastGroupedEntities
+    }
+
     getLastRegexResult() {
         return this.lastRegexResult
     }
@@ -201,6 +259,7 @@ export class AnalysisManager {
     clearLastAnalysisResult() {
         this.lastAnalysisResult = null
         this.lastRegexResult = null
+        this.lastGroupedEntities = null
     }
 
     // Regex pattern management methods

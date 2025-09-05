@@ -66,7 +66,7 @@ class ModelService {
             
             // Filter and process results
             const processedResults = results
-                .filter(result => result.score > 0.5) // Only high confidence predictions
+                .filter(result => result.score > 0.8) // Only high confidence predictions
                 .map(result => ({
                     word: result.word,
                     entity: result.entity,

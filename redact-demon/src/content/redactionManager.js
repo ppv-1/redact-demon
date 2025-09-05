@@ -41,12 +41,7 @@ export class RedactionManager {
         this.textMonitor.contextMenuManager.updateContextMenu(false, 0)
     }
 
-    /**
-     * Get character positions for all entities
-     * @param {string} text - Original text
-     * @param {Array} entities - Named entities
-     * @returns {Array} Array of position objects
-     */
+    
     getAllEntityPositions(text, entities) {
         const entitiesByType = this.entityProcessor.groupEntitiesByType(entities)
         const allPositions = []
@@ -61,12 +56,7 @@ export class RedactionManager {
         return allPositions.sort((a, b) => a.start - b.start)
     }
 
-    /**
-     * Perform redaction while tracking position shifts
-     * @param {string} originalText - Original text
-     * @param {Array} positions - Array of entity positions
-     * @returns {string} Redacted text
-     */
+    
     performRedactionWithPositionTracking(originalText, positions) {
         let result = originalText
         let totalShift = 0 // Track cumulative position shift
@@ -113,12 +103,7 @@ export class RedactionManager {
         return result
     }
 
-    /**
-     * Check if two text strings match (with some flexibility for whitespace)
-     * @param {string} text1 - First text
-     * @param {string} text2 - Second text
-     * @returns {boolean} Whether texts match
-     */
+    
     textMatches(text1, text2) {
         // Direct match
         if (text1 === text2) return true
@@ -133,10 +118,7 @@ export class RedactionManager {
         return false
     }
 
-    /**
-     * Redact only specific entity types
-     * @param {Array} entityTypes - Array of entity types to redact
-     */
+    
     redactSpecificEntityTypes(entityTypes) {
         if (!this.textMonitor.lastAnalysisResult || !this.textMonitor.currentInput) {
             console.log('No analysis result or current input to redact')

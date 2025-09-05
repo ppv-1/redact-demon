@@ -2,26 +2,38 @@ import { EntityProcessor } from '../utils/entityProcessor.js'
 
 export class ContextMenuManager {
     constructor() {
-        this.entityProcessor = new EntityProcessor()
+        this.hasEntities = false
+        this.entityCount = 0
+        this.setupContextMenu()
     }
 
-    updateForCurrentInput(currentText, lastAnalysisResult) {
-        if (!currentText.trim() || !lastAnalysisResult) {
+    setupContextMenu() {
+        // Create context menu items when extension loads
+        chrome.runtime.sendMessage({
+            type: 'CREATE_CONTEXT_MENU'
+        })
+    }
+
+    updateForCurrentInput(text, groupedEntities) {
+        if (!groupedEntities || !Array.isArray(groupedEntities)) {
             this.updateContextMenu(false, 0)
             return
         }
 
-        const namedEntities = this.entityProcessor.getNamedEntities(lastAnalysisResult)
-        this.updateContextMenu(namedEntities.length > 0, namedEntities.length)
+        const entityCount = groupedEntities.length // This is now the grouped count
+        this.hasEntities = entityCount > 0
+        this.entityCount = entityCount
+
+        this.updateContextMenu(this.hasEntities, entityCount)
+        
+        console.log(`Context menu updated: ${entityCount} entity groups detected`)
     }
 
     updateContextMenu(hasEntities, entityCount) {
         chrome.runtime.sendMessage({
-            action: 'UPDATE_CONTEXT_MENU',
-            hasPersonEntities: hasEntities,
-            personCount: entityCount
-        }).catch(error => {
-            console.log('Failed to update context menu:', error)
+            type: 'UPDATE_CONTEXT_MENU',
+            hasEntities: hasEntities,
+            entityCount: entityCount
         })
     }
 }
