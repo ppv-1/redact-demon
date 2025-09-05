@@ -1,15 +1,18 @@
 #root {
-  max-width: 400px;
+  max-width: 300px;
   margin: 0 auto;
   padding: 16px;
   text-align: left;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #333;
 }
 
+
 .popup-container {
-  width: 350px;
-  max-height: 500px;
+  width: 300px;
+  max-height: 300px;
   overflow-y: auto;
+  background-color: #333;
 }
 
 .popup-container h2 {
@@ -52,6 +55,8 @@
 .patterns-container {
   border-top: 1px solid #eee;
   padding-top: 12px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .pattern-item {

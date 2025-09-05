@@ -134,8 +134,8 @@ export default function App() {
 
   return (
     <div className="popup-container">
-      <h2>Redact Demon Settings</h2>
-      
+      <h2 style={{ color: 'white' }}>Redact Demon Settings</h2>
+
       <div className="controls">
         <button onClick={handleSelectAll} className="control-button">
           Select All
@@ -146,7 +146,7 @@ export default function App() {
       </div>
 
       <div className="patterns-container">
-        <h3>Redaction Patterns</h3>
+        <h3 style={{ color: 'white' }}>Redaction Patterns</h3>
         {patterns.map(pattern => (
           <div key={pattern.id} className="pattern-item">
             <label className="pattern-label">
