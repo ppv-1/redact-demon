@@ -87,7 +87,7 @@ With LLM tools like ChatGPT, Gemini, and Claude becoming mainstream in workplace
 6. Go to Manage Extensions
 ![Screenshot](public/assets/ss1.png)
 
-7. Go to Load unpacked
+7. Enable Developer mode and go to Load unpacked
 ![Screenshot](public/assets/ss2.png)
 8. Load the dist folder 
     ```bash
