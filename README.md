@@ -115,6 +115,7 @@ With LLM tools like ChatGPT, Gemini, and Claude becoming mainstream in workplace
 
 
 ## Usage
+- Currently only works with ChatGPT and Gemini
 - [Youtube Demo](https://youtu.be/GcwakjGYTpE)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
