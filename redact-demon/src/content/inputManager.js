@@ -34,7 +34,6 @@ export class InputManager {
     attachToInput(input) {
         if (this.attachedInputs.has(input)) return
 
-        console.log('Attaching to input:', input.tagName, input.className)
         
         // Add focus listener for immediate analysis
         input.addEventListener('focus', (e) => {
@@ -63,9 +62,7 @@ export class InputManager {
         this.attachedInputs.add(input)
     }
 
-    handleInputFocus(input) {
-        console.log('Input focused:', input.tagName)
-        
+    handleInputFocus(input) {        
         // Set as current input
         this.currentInput = input
         this.lastText = this.getTextFromInput(input)
@@ -85,7 +82,6 @@ export class InputManager {
             this.currentInput = input
             
             if (currentText.trim()) {
-                console.log('Text changed, analyzing:', currentText.substring(0, 50) + '...')
                 this.textMonitor.analysisManager.debounceAnalysis(currentText)
             }
         }
@@ -95,7 +91,6 @@ export class InputManager {
         // When user selects text or moves cursor, re-analyze if there's content
         const currentText = this.getTextFromInput(input)
         if (currentText && currentText.trim()) {
-            console.log('Selection changed, re-analyzing text')
             // Use shorter debounce for selection changes
             this.textMonitor.analysisManager.debounceAnalysis(currentText, 300)
         }

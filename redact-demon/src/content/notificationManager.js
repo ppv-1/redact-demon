@@ -178,7 +178,6 @@ export class NotificationManager {
             this.hideNotification()
         }, 4000)
         
-        console.log(`Notification shown: ${entityCount} entities detected`)
     }
 
     showModelNotification(message, type = 'info') {

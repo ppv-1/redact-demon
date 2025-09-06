@@ -15,9 +15,7 @@ export class AnalysisManager {
 
     async initializeModel() {
         try {
-            console.log('Initializing model in content script...')
             await this.modelService.initializeModel()
-            console.log('Model initialized successfully')
             return { success: true, message: 'Model loaded in content script' }
         } catch (error) {
             console.error('Failed to initialize model:', error)
@@ -42,23 +40,17 @@ export class AnalysisManager {
 
     async performAnalysis(text) {
         try {
-            console.log('Starting analysis for text:', text)
             
             // Step 1: Regex pattern matching (runs first)
-            console.log('Running regex pattern analysis...')
             const regexResults = this.regexMatcher.analyzeText(text)
             this.lastRegexResult = regexResults
             
-            console.log(`Regex analysis found ${regexResults.length} entities:`, regexResults)
 
             // Step 2: ML model analysis (if model is loaded)
             let mlResults = []
             if (this.modelService.isModelLoaded()) {
-                console.log('Running ML model analysis...')
                 mlResults = await this.modelService.analyzeText(text)
-                console.log(`ML analysis found ${mlResults.length} entities:`, mlResults)
             } else {
-                console.log('Model not loaded, skipping ML analysis')
             }
 
             // Step 3: Combine results (regex takes priority)
@@ -70,19 +62,7 @@ export class AnalysisManager {
             const groupedEntitiesData = this.processGroupedEntities(text, namedEntities)
             this.lastGroupedEntities = groupedEntitiesData
 
-            console.log(`Combined analysis result: ${combinedResults.length} total entities`)
-            console.log(`Grouped entities result: ${groupedEntitiesData.totalGroups} entity groups`)
-            
-            // Log detailed results
-            combinedResults.forEach((entity, index) => {
-                console.log(`Entity ${index + 1}:`, {
-                    word: entity.word,
-                    type: entity.entity,
-                    score: (entity.score * 100).toFixed(2) + '%',
-                    source: entity.source || 'ml',
-                    index: entity.index
-                })
-            })
+    
 
             // Update context menu with grouped entity count
             this.textMonitor.contextMenuManager.updateForCurrentInput(
@@ -134,7 +114,6 @@ export class AnalysisManager {
                 positions: characterPositions
             }
 
-            console.log(`${entityType}: ${typeEntities.length} raw entities -> ${characterPositions.length} grouped entities`)
         }
 
         // Sort positions by start position
@@ -226,8 +205,6 @@ export class AnalysisManager {
             const namedEntities = this.entityProcessor.getNamedEntities(combinedResults)
             const groupedEntitiesData = this.processGroupedEntities(text, namedEntities)
             
-            console.log('Manual analysis result:', combinedResults)
-            console.log('Grouped entities:', groupedEntitiesData)
             
             return {
                 success: true,

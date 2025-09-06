@@ -8,7 +8,6 @@ export class RedactionManager {
 
     redactAllEntities() {
         if (!this.textMonitor.lastAnalysisResult || !this.textMonitor.currentInput) {
-            console.log('No analysis result or current input to redact')
             return
         }
 
@@ -16,17 +15,14 @@ export class RedactionManager {
         const namedEntities = this.entityProcessor.getNamedEntities(this.textMonitor.lastAnalysisResult)
         
         if (namedEntities.length === 0) {
-            console.log('No named entities to redact')
             return
         }
 
-        console.log(`Starting redaction of ${namedEntities.length} entities`)
         
         // Get all character positions for all entities
         const allPositions = this.getAllEntityPositions(currentText, namedEntities)
         
         if (allPositions.length === 0) {
-            console.log('No entity positions found to redact')
             return
         }
 
@@ -34,7 +30,6 @@ export class RedactionManager {
         const redactedText = this.performRedactionWithPositionTracking(currentText, allPositions)
 
         this.textMonitor.replaceCurrentText(redactedText)
-        console.log('All entities redacted successfully')
         
         // Clear analysis results
         this.textMonitor.analysisManager.clearLastAnalysisResult()
@@ -94,7 +89,6 @@ export class RedactionManager {
                 const currentShift = newLength - originalLength
                 totalShift += currentShift
                 
-                console.log(`Redacted ${position.entityType}: "${originalEntityText}" -> "${replacement}" (shift: ${currentShift})`)
             } else {
                 console.warn(`Position mismatch for ${position.entityType}. Expected: "${originalEntityText}", Found: "${currentEntityText}"`)
             }
@@ -121,7 +115,6 @@ export class RedactionManager {
     
     redactSpecificEntityTypes(entityTypes) {
         if (!this.textMonitor.lastAnalysisResult || !this.textMonitor.currentInput) {
-            console.log('No analysis result or current input to redact')
             return
         }
 
@@ -135,11 +128,9 @@ export class RedactionManager {
         })
 
         if (targetEntities.length === 0) {
-            console.log('No target entities found to redact')
             return
         }
 
-        console.log(`Redacting ${targetEntities.length} entities of types: ${entityTypes.join(', ')}`)
         
         // Get positions for target entities only
         const targetPositions = this.getAllEntityPositions(currentText, targetEntities)
@@ -148,7 +139,6 @@ export class RedactionManager {
         const redactedText = this.performRedactionWithPositionTracking(currentText, targetPositions)
 
         this.textMonitor.replaceCurrentText(redactedText)
-        console.log(`Specific entity types redacted: ${entityTypes.join(', ')}`)
         
         // Update analysis results (remove redacted entities)
         this.updateAnalysisAfterPartialRedaction(entityTypes)
@@ -181,7 +171,6 @@ export class RedactionManager {
      */
     redactAllEntitiesReverse() {
         if (!this.textMonitor.lastAnalysisResult || !this.textMonitor.currentInput) {
-            console.log('No analysis result or current input to redact')
             return
         }
 
@@ -189,7 +178,6 @@ export class RedactionManager {
         const namedEntities = this.entityProcessor.getNamedEntities(this.textMonitor.lastAnalysisResult)
         
         if (namedEntities.length === 0) {
-            console.log('No named entities to redact')
             return
         }
 
@@ -212,11 +200,9 @@ export class RedactionManager {
             const afterEntity = redactedText.substring(position.end)
             redactedText = beforeEntity + replacement + afterEntity
             
-            console.log(`Redacted ${position.entityType}: "${position.name}" -> "${replacement}"`)
         })
 
         this.textMonitor.replaceCurrentText(redactedText)
-        console.log('All entities redacted successfully (reverse method)')
         
         // Clear analysis results
         this.textMonitor.analysisManager.clearLastAnalysisResult()

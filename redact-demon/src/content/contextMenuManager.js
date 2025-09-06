@@ -26,7 +26,6 @@ export class ContextMenuManager {
 
         this.updateContextMenu(this.hasEntities, entityCount)
         
-        console.log(`Context menu updated: ${entityCount} entity groups detected`)
     }
 
     updateContextMenu(hasEntities, entityCount) {

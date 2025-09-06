@@ -20,7 +20,6 @@ export default class TextMonitor {
         this.messageHandler.setupMessageListener()
         this.setupPatternSettingsListener()
         this.setupModelNotificationListener()
-        console.log('TextMonitor initialized with ModelService')
     }
 
     setupModelNotificationListener() {
@@ -37,7 +36,6 @@ export default class TextMonitor {
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.type === 'PATTERN_SETTINGS_UPDATED') {
                 this.analysisManager.updateRegexPattern(message.patternId, message.enabled)
-                console.log(`Updated pattern ${message.patternId} to ${message.enabled}`)
                 // Re-analyze after updating patterns
                 this.reAnalyzeCurrentText()
 
@@ -45,7 +43,6 @@ export default class TextMonitor {
                 message.patterns.forEach(pattern => {
                     this.analysisManager.updateRegexPattern(pattern.id, pattern.enabled)
                 })
-                console.log('Updated all pattern settings')
                 this.reAnalyzeCurrentText()
             }
         })
@@ -59,7 +56,6 @@ export default class TextMonitor {
 
         const currentText = this.getCurrentText()
         if (currentText && currentText.trim()) {
-            console.log('Re-analyzing text after pattern change...')
 
             // Trigger analysis with current text
             this.analysisManager.debounceAnalysis(currentText)
@@ -68,7 +64,6 @@ export default class TextMonitor {
 
     // Method called when input is focused/selected
     onInputFocus(inputElement) {
-        console.log('Input focused, analyzing text')
 
         // Clear any existing debounce timer
         this.analysisManager.clearDebounceTimer()
@@ -88,7 +83,6 @@ export default class TextMonitor {
             const entityTypes = [...new Set(groupedEntities.map(e => e.entityType))]
             this.notificationManager.showNotification(groupedEntities.length, entityTypes)
             
-            console.log(`Notification shown for ${groupedEntities.length} entity groups of types: ${entityTypes.join(', ')}`)
         }
     }
 
@@ -100,7 +94,6 @@ export default class TextMonitor {
         // Load saved pattern settings
         try {
             await this.analysisManager.regexMatcher.loadSettings()
-            console.log('Pattern settings loaded successfully')
         } catch (error) {
             console.warn('Failed to load pattern settings:', error)
         }
@@ -108,24 +101,20 @@ export default class TextMonitor {
 
     startAutoAnalysis() {
         this.isAutoAnalyzing = true
-        console.log('Auto-analysis enabled')
     }
 
     stopAutoAnalysis() {
         this.isAutoAnalyzing = false
         this.analysisManager.clearDebounceTimer()
-        console.log('Auto-analysis disabled')
     }
 
     startMonitoring() {
         if (this.isMonitoring) {
-            console.log('Already monitoring')
             return
         }
 
         this.isMonitoring = true
         this.inputManager.startMonitoring()
-        console.log('Text monitoring started')
     }
 
     stopMonitoring() {
@@ -133,7 +122,6 @@ export default class TextMonitor {
         this.stopAutoAnalysis()
         this.inputManager.stopMonitoring()
         this.notificationManager.hideNotification()
-        console.log('Text monitoring stopped')
     }
 
     getCurrentText() {
@@ -175,9 +163,8 @@ setTimeout(async () => {
 
     try {
         await textMonitor.initializeModel()
-        console.log("Model initialization completed")
     } catch (error) {
-        console.log("Model initialization failed:", error.message)
+        console.error("Model initialization failed:", error.message)
         // Show error notification
         textMonitor.notificationManager.showModelNotification(
             'Failed to load ML model. Using regex patterns only.', 

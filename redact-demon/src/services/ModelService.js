@@ -11,14 +11,14 @@ class ModelService {
 
     setupEnvironment() {
         // Enable both local and remote models
+        env.useBrowserCache = false
         env.allowLocalModels = true
         env.allowRemoteModels = true
         env.localModelPath = chrome.runtime.getURL('public/assets/')
         
         // Set cache directory for Chrome extension
-        env.cacheDir = 'models'
+        env.cacheDir = null
         
-        console.log('Model path set to:', env.localModelPath)
     }
 
     async initializeModel() {

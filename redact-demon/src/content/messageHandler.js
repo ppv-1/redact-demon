@@ -5,7 +5,6 @@ export class MessageHandler {
 
     setupMessageListener() {
         chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            console.log('Received message:', request)
 
             switch (request.action) {
                 case 'START_MONITORING':
